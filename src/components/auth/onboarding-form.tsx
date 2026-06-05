@@ -58,8 +58,7 @@ export function OnboardingForm({
       return
     }
 
-    router.push("/matches")
-    router.refresh()
+    window.location.href = "/matches"
   }
 
   const handleChange = (val: string) => {
