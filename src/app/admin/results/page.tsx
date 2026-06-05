@@ -1,0 +1,80 @@
+import { createClient } from "@/lib/supabase/server"
+import { ResultCard } from "@/components/admin/result-card"
+import { ClipboardList } from "lucide-react"
+
+export const revalidate = 0
+
+export default async function AdminResultsPage() {
+  const supabase = await createClient()
+
+  // Fetch matches where kickoff has passed, grouped by status
+  const { data: rawMatches } = await supabase
+    .from("matches")
+    .select(`
+      id, kickoff_at, status, home_score, away_score,
+      home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
+      away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
+    `)
+    .lte("kickoff_at", new Date().toISOString())
+    .not("status", "eq", "cancelled")
+    .order("kickoff_at", { ascending: false })
+
+  const matches = (rawMatches ?? []) as unknown as Array<{
+    id: string
+    kickoff_at: string
+    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+    home_score: number | null
+    away_score: number | null
+    home_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
+    away_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
+  }>
+
+  const pending = matches.filter((m) => m.status !== "completed")
+  const completed = matches.filter((m) => m.status === "completed")
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+      <div className="flex items-center gap-2">
+        <ClipboardList className="w-5 h-5 text-[var(--green)]" />
+        <h1 className="text-2xl font-bold">Result Entry</h1>
+      </div>
+
+      {/* Admin nav */}
+      <div className="flex gap-3 text-sm">
+        <span className="font-semibold border-b-2 border-[var(--green)] pb-1">Results</span>
+      </div>
+
+      {matches.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          No matches have kicked off yet.
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Awaiting result ({pending.length})
+          </h2>
+          <div className="space-y-2">
+            {pending.map((match) => (
+              <ResultCard key={match.id} match={match} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {completed.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Completed ({completed.length})
+          </h2>
+          <div className="space-y-2">
+            {completed.map((match) => (
+              <ResultCard key={match.id} match={match} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
