@@ -12,7 +12,7 @@ export default async function LeaguesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // My leagues
+  // My leagues (logged-in only)
   let myLeagues: {
     id: string; name: string; slug: string; description: string | null
     visibility: "public" | "private"; is_archived: boolean
@@ -34,7 +34,6 @@ export default async function LeaguesPage() {
         .in("id", leagueIds)
         .order("created_at", { ascending: false })
 
-      // Get member counts
       const { data: counts } = await supabase
         .from("league_members")
         .select("league_id")
@@ -53,7 +52,7 @@ export default async function LeaguesPage() {
     }
   }
 
-  // Public leagues (not in my leagues, not archived)
+  // Public leagues — visible to everyone, excluding leagues already joined
   const myLeagueIds = myLeagues.map((l) => l.id)
   const { data: publicLeagues } = await supabase
     .from("leagues")
@@ -64,7 +63,6 @@ export default async function LeaguesPage() {
     .order("created_at", { ascending: false })
     .limit(50)
 
-  // Get member counts for public leagues
   const publicIds = (publicLeagues ?? []).map((l) => l.id)
   const publicCountMap: Record<string, number> = {}
   if (publicIds.length > 0) {
@@ -85,28 +83,47 @@ export default async function LeaguesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Leagues</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          {user && <JoinByCodeForm />}
-          {user && (
+        {user && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <JoinByCodeForm />
             <Button asChild size="sm" className="bg-[var(--green)] hover:bg-[var(--green)]/90 text-white">
               <Link href="/leagues/create">
                 <Plus className="w-4 h-4 mr-1" /> Create
               </Link>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
+      {/* Logged-out: subtle CTA + public leagues */}
       {!user ? (
-        <div className="text-center py-16 space-y-3">
-          <p className="text-muted-foreground">Sign in to create or join leagues.</p>
-          <Button asChild size="sm">
-            <Link href="/auth/login">Sign in</Link>
-          </Button>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[var(--green)]/30 bg-[var(--green-dim)]/10 px-4 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Sign in to create your own league or join a private one.
+            </p>
+            <Button asChild size="sm" className="flex-shrink-0 bg-[var(--green)] hover:bg-[var(--green)]/90 text-white">
+              <Link href="/auth/login">Sign in free</Link>
+            </Button>
+          </div>
+
+          {publicLeaguesFormatted.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No public leagues yet — be the first to create one.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {publicLeaguesFormatted.map((league) => (
+                <LeagueCard key={league.id} league={league} />
+              ))}
+            </div>
+          )}
         </div>
       ) : (
+        /* Logged-in: tabbed view */
         <Tabs defaultValue="mine">
           <TabsList className="bg-secondary">
             <TabsTrigger value="mine">My Leagues ({myLeagues.length})</TabsTrigger>

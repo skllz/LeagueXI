@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Trophy, Medal } from "lucide-react"
+import Link from "next/link"
 
 interface LeaderboardRow {
   user_id: string
@@ -28,48 +29,90 @@ export function LeaderboardTable({ rows, currentUserId, pinnedRow }: Leaderboard
         <p className="text-muted-foreground text-sm">
           No scores yet. Leaderboard updates after matches are completed.
         </p>
+        <p className="text-muted-foreground text-sm">
+          The tournament kicks off June 12.{" "}
+          <Link href="/matches" className="text-[var(--green)] hover:underline">
+            Make your predictions now
+          </Link>{" "}
+          and climb the table.
+        </p>
       </div>
     )
   }
 
+  // True if no match has been played yet — everyone is on 0 points
+  const tournamentNotStarted = rows.every((r) => r.total_points === 0)
+
+  // Current user has no predictions yet (in the table but 0 predictions)
+  const currentUserRow = rows.find((r) => r.user_id === currentUserId)
+  const currentUserHasNoPredictions =
+    !!currentUserId &&
+    !!currentUserRow &&
+    currentUserRow.exact_scores === 0 &&
+    currentUserRow.correct_results === 0
+
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
-        <div className="text-xs font-semibold text-muted-foreground text-center">#</div>
-        <div className="text-xs font-semibold text-muted-foreground">Player</div>
-        <div className="text-xs font-semibold text-muted-foreground text-center">Pts</div>
-        <div className="text-xs font-semibold text-muted-foreground text-center hidden sm:block">Exact</div>
-        <div className="text-xs font-semibold text-muted-foreground text-center hidden sm:block">Correct</div>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border overflow-hidden">
+        {/* Header */}
+        <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
+          <div className="text-xs font-semibold text-muted-foreground text-center">#</div>
+          <div className="text-xs font-semibold text-muted-foreground">Player</div>
+          <div className="text-xs font-semibold text-muted-foreground text-center">Pts</div>
+          <div className="text-xs font-semibold text-muted-foreground text-center hidden sm:block">Exact</div>
+          <div className="text-xs font-semibold text-muted-foreground text-center hidden sm:block">Correct</div>
+        </div>
+
+        {/* Top 25 rows */}
+        {rows.map((row, i) => (
+          <TableRow
+            key={row.user_id}
+            row={row}
+            rank={i + 1}
+            isCurrentUser={row.user_id === currentUserId}
+          />
+        ))}
+
+        {/* Pinned row — shown when logged-in user is outside top 25 */}
+        {pinnedRow && (
+          <>
+            <div className="border-t-2 border-dashed border-border/60 mx-4" />
+            {pinnedRow.row ? (
+              <TableRow
+                row={pinnedRow.row}
+                rank={pinnedRow.rank}
+                isCurrentUser
+                isPinned
+              />
+            ) : (
+              <div className="px-4 py-3 text-sm text-muted-foreground text-center">
+                Make your first prediction to get ranked.
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Top 25 rows */}
-      {rows.map((row, i) => (
-        <TableRow
-          key={row.user_id}
-          row={row}
-          rank={i + 1}
-          isCurrentUser={row.user_id === currentUserId}
-        />
-      ))}
+      {/* Context message when no points yet */}
+      {tournamentNotStarted && (
+        <p className="text-center text-sm text-muted-foreground px-2">
+          The tournament kicks off June 12.{" "}
+          <Link href="/matches" className="text-[var(--green)] hover:underline font-medium">
+            Make your predictions now
+          </Link>{" "}
+          and climb the table.
+        </p>
+      )}
 
-      {/* Pinned user row (outside top 25) */}
-      {pinnedRow && (
-        <>
-          <div className="border-t-2 border-dashed border-border/60 mx-4" />
-          {pinnedRow.row ? (
-            <TableRow
-              row={pinnedRow.row}
-              rank={pinnedRow.rank}
-              isCurrentUser
-              isPinned
-            />
-          ) : (
-            <div className="px-4 py-3 text-sm text-muted-foreground text-center">
-              Make your first prediction to get ranked.
-            </div>
-          )}
-        </>
+      {/* Nudge for logged-in users who haven't predicted yet */}
+      {currentUserHasNoPredictions && !tournamentNotStarted && (
+        <p className="text-center text-sm text-muted-foreground px-2">
+          You haven&apos;t made any predictions yet.{" "}
+          <Link href="/matches" className="text-[var(--green)] hover:underline font-medium">
+            Go to matches
+          </Link>{" "}
+          to get on the board.
+        </p>
       )}
     </div>
   )
@@ -109,6 +152,7 @@ function TableRow({
       <div className="flex items-center gap-2 min-w-0">
         <Avatar className="w-7 h-7 flex-shrink-0">
           <AvatarImage src={row.avatar_url ?? undefined} />
+          {/* Initials always from username — never from email */}
           <AvatarFallback className="bg-[var(--green-dim)] text-white text-xs">
             {row.username.slice(0, 2).toUpperCase()}
           </AvatarFallback>

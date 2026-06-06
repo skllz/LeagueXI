@@ -23,12 +23,14 @@ export function PredictionInput({
   initialAway,
   isLoggedIn,
 }: PredictionInputProps) {
+  // All hooks declared at the top — React rules require no hooks after conditional returns
   const [home, setHome] = useState(initialHome ?? 0)
   const [away, setAway] = useState(initialAway ?? 0)
   const [saveState, setSaveState] = useState<SaveState>(
     initialHome !== null ? "saved" : "idle"
   )
   const [errorMsg, setErrorMsg] = useState("")
+  const [showSignIn, setShowSignIn] = useState(false)
   const isDirtyRef = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -90,8 +92,7 @@ export function PredictionInput({
     )
   }
 
-  const [showSignIn, setShowSignIn] = useState(false)
-
+  // Logged-out: show tap-to-predict buttons that open a sign-in modal inline
   if (!isLoggedIn) {
     return (
       <>
@@ -101,6 +102,7 @@ export function PredictionInput({
             <button
               onClick={() => setShowSignIn(true)}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+              aria-label="Sign in to predict"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -108,6 +110,7 @@ export function PredictionInput({
             <button
               onClick={() => setShowSignIn(true)}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+              aria-label="Sign in to predict"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
