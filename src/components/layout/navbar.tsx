@@ -3,10 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Trophy, Menu, X } from "lucide-react"
 import { useState } from "react"
-import { UserMenu } from "@/components/auth/user-menu"
+import { UserMenu, SignInButton } from "@/components/auth/user-menu"
+
+interface NavbarProps {
+  user: { username: string; avatarUrl: string | null; isAdmin: boolean } | null
+}
 
 const navLinks = [
   { href: "/matches", label: "Matches" },
@@ -14,7 +17,7 @@ const navLinks = [
   { href: "/leagues", label: "Leagues" },
 ]
 
-export function Navbar() {
+export function Navbar({ user }: NavbarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
@@ -47,7 +50,15 @@ export function Navbar() {
 
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-3">
-          <UserMenu />
+          {user ? (
+            <UserMenu
+              username={user.username}
+              avatarUrl={user.avatarUrl}
+              isAdmin={user.isAdmin}
+            />
+          ) : (
+            <SignInButton />
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -79,7 +90,15 @@ export function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t border-border">
-            <UserMenu />
+            {user ? (
+              <UserMenu
+                username={user.username}
+                avatarUrl={user.avatarUrl}
+                isAdmin={user.isAdmin}
+              />
+            ) : (
+              <SignInButton />
+            )}
           </div>
         </div>
       )}
