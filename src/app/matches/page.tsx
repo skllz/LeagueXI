@@ -23,11 +23,8 @@ function groupByRound(matches: MatchWithTeams[]): { round: string; matches: Matc
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(m)
   }
-  // Sort rounds: group stage matchdays first, then knockout rounds
   const order = [
-    "Group Stage – Matchday 1",
-    "Group Stage – Matchday 2",
-    "Group Stage – Matchday 3",
+    "Group Stage",
     "Round of 32",
     "Round of 16",
     "Quarter-finals",
