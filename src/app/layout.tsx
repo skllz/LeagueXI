@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/layout/navbar"
+import { AuthProvider } from "@/components/auth/auth-provider"
 import { createClient } from "@/lib/supabase/server"
 
 const geistSans = Geist({
@@ -51,7 +52,9 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Navbar user={navUser} />
-        <main className="flex-1">{children}</main>
+        <AuthProvider>
+          <main className="flex-1">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   )
