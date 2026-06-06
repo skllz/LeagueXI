@@ -10,10 +10,17 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // Middleware handles the onboarding redirect
+      // In production behind Vercel's proxy, x-forwarded-host is the real public hostname.
+      // Using it avoids redirecting to the internal/container URL, which would break cookies.
+      const forwardedHost = request.headers.get("x-forwarded-host")
+      if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/login?error=auth_failed`)
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  const errorBase = forwardedHost ? `https://${forwardedHost}` : origin
+  return NextResponse.redirect(`${errorBase}/auth/login?error=auth_failed`)
 }
