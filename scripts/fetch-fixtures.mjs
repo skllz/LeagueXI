@@ -114,6 +114,7 @@ async function main() {
     status: mapStatus(m.status),
     home_score: m.score?.fullTime?.home ?? null,
     away_score: m.score?.fullTime?.away ?? null,
+    round: formatRound(m.stage, m.matchday),
   }))
 
   console.log(`Upserting ${matchRows.length} matches...`)
@@ -131,6 +132,19 @@ async function main() {
   }
 
   console.log("✓ Done! All fixtures imported.")
+}
+
+function formatRound(stage, matchday) {
+  switch (stage) {
+    case "GROUP_STAGE": return matchday ? `Group Stage – Matchday ${matchday}` : "Group Stage"
+    case "ROUND_OF_32": return "Round of 32"
+    case "ROUND_OF_16": return "Round of 16"
+    case "QUARTER_FINALS": return "Quarter-finals"
+    case "SEMI_FINALS": return "Semi-finals"
+    case "THIRD_PLACE": return "Third Place Play-off"
+    case "FINAL": return "Final"
+    default: return stage ? stage.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null
+  }
 }
 
 function toUUID(numericId) {

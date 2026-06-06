@@ -6,13 +6,10 @@ export function ClientTime({ isoString }: { isoString: string }) {
   const [time, setTime] = useState<string>("")
 
   useEffect(() => {
-    setTime(
-      new Date(isoString).toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZoneName: "short",
-      })
-    )
+    const d = new Date(isoString)
+    const dateStr = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    setTime(`${dateStr} · ${timeStr}`)
   }, [isoString])
 
   return <span suppressHydrationWarning>{time || "—"}</span>
@@ -27,10 +24,22 @@ export function ClientDate({ isoString }: { isoString: string }) {
         weekday: "short",
         day: "numeric",
         month: "short",
-        year: "numeric",
       })
     )
   }, [isoString])
 
   return <span suppressHydrationWarning>{date || "—"}</span>
+}
+
+export function ClientDateTime({ isoString, className }: { isoString: string; className?: string }) {
+  const [text, setText] = useState<string>("")
+
+  useEffect(() => {
+    const d = new Date(isoString)
+    const dateStr = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    setText(`${dateStr} · ${timeStr}`)
+  }, [isoString])
+
+  return <span className={className} suppressHydrationWarning>{text || "—"}</span>
 }

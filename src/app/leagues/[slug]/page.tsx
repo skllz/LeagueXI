@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table"
+import { LeaguePredictions } from "@/components/leagues/league-predictions"
 import { InviteSection } from "@/components/leagues/invite-section"
 import { JoinByCodeForm } from "@/components/leagues/join-by-code-form"
 import {
@@ -84,6 +85,12 @@ export default async function LeaguePage({
   const { data: leaderboardRows } = await supabase.rpc("get_league_leaderboard", {
     p_league_id: league.id,
   })
+
+  // Fetch league predictions (members only — RPC enforces this server-side too)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: predictionRows } = (isMember || isAdmin)
+    ? await (supabase.rpc as any)("get_league_predictions", { p_league_id: league.id })
+    : { data: [] }
 
   // Fetch members with profiles
   const { data: members } = await supabase
@@ -197,16 +204,29 @@ export default async function LeaguePage({
         )}
       </div>
 
-      {/* Tabs: Leaderboard + Members */}
+      {/* Tabs: Leaderboard + Predictions (members only) + Members */}
       <Tabs defaultValue="leaderboard">
         <TabsList className="bg-secondary">
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          {(isMember || isAdmin) && (
+            <TabsTrigger value="predictions">Predictions</TabsTrigger>
+          )}
           <TabsTrigger value="members">Members ({membersList.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="leaderboard" className="mt-4">
           <LeaderboardTable rows={leaderboardRows ?? []} currentUserId={user?.id} />
         </TabsContent>
+
+        {(isMember || isAdmin) && (
+          <TabsContent value="predictions" className="mt-4">
+            <LeaguePredictions
+              rows={predictionRows ?? []}
+              currentUserId={user!.id}
+              memberCount={membersList.length}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="members" className="mt-4">
           <div className="rounded-xl border border-border overflow-hidden">

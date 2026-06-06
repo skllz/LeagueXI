@@ -47,18 +47,6 @@ function groupByRound(matches: MatchWithTeams[]): { round: string; matches: Matc
     .map(([round, matches]) => ({ round, matches: matches.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)) }))
 }
 
-function findNextRound(groups: { round: string; matches: MatchWithTeams[] }[]): string | null {
-  const now = new Date()
-  for (const group of groups) {
-    if (group.matches.some((m) => new Date(m.kickoff_at) > now && m.status === "scheduled")) {
-      return group.round
-    }
-    if (group.matches.some((m) => m.status === "live")) {
-      return group.round
-    }
-  }
-  return null
-}
 
 export default async function MatchesPage() {
   const supabase = await createClient()
@@ -125,7 +113,6 @@ export default async function MatchesPage() {
 
   const predictedCount = Object.keys(predictionMap).length
   const groups = groupByRound(matches)
-  const nextRound = findNextRound(groups)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -144,7 +131,7 @@ export default async function MatchesPage() {
             key={round}
             round={round}
             matchCount={roundMatches.length}
-            defaultOpen={round === nextRound}
+            defaultOpen={false}
           >
             {roundMatches.map((match) => (
               <MatchCard

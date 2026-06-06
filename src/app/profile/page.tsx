@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LeagueCard } from "@/components/leagues/league-card"
 import { EditUsernameForm } from "@/components/profile/edit-username-form"
-import { Trophy, Target } from "lucide-react"
+import { Trophy } from "lucide-react"
 
 export const revalidate = 0
 
@@ -14,31 +15,11 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, username, avatar_url, is_admin, created_at")
     .eq("id", user.id)
     .single()
 
   if (!profile) redirect("/onboarding")
-
-  // Get leaderboard rank and points
-  const { data: leaderboard } = await supabase.rpc("get_leaderboard")
-  const myRow = leaderboard?.find((r) => r.user_id === user.id)
-  const myRank = leaderboard ? leaderboard.findIndex((r) => r.user_id === user.id) + 1 : 0
-
-  // Get my leagues
-  const { data: memberships } = await supabase
-    .from("league_members")
-    .select("league_id")
-    .eq("user_id", user.id)
-
-  const leagueIds = memberships?.map((m) => m.league_id) ?? []
-  const { data: leagues } = leagueIds.length > 0
-    ? await supabase
-        .from("leagues")
-        .select("id, name, slug, description, visibility, is_archived")
-        .in("id", leagueIds)
-        .order("created_at", { ascending: false })
-    : { data: [] }
 
   const initials = profile.username
     ? profile.username.slice(0, 2).toUpperCase()
@@ -62,13 +43,11 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — loaded async so they don't block the page */}
       {!profile.is_admin && (
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={<Trophy className="w-4 h-4 text-[var(--green)]" />} label="Points" value={myRow?.total_points ?? 0} />
-          <StatCard icon={<span className="text-sm">⭐</span>} label="Exact scores" value={myRow?.exact_scores ?? 0} />
-          <StatCard icon={<span className="text-sm">✓</span>} label="Global rank" value={myRank > 0 ? `#${myRank}` : "—"} />
-        </div>
+        <Suspense fallback={<StatsSkeleton />}>
+          <ProfileStats userId={user.id} />
+        </Suspense>
       )}
 
       {/* Edit username */}
@@ -79,27 +58,87 @@ export default async function ProfilePage() {
 
       {/* My leagues */}
       {!profile.is_admin && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            My Leagues ({leagues?.length ?? 0})
-          </h2>
-          {leagues?.length === 0 ? (
-            <p className="text-sm text-muted-foreground">You haven&apos;t joined any leagues yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {(leagues ?? []).map((league) => (
-                <LeagueCard
-                  key={league.id}
-                  league={{
-                    ...league,
-                    visibility: league.visibility as "public" | "private",
-                  }}
-                />
-              ))}
-            </div>
-          )}
+        <Suspense fallback={<div className="h-24 bg-secondary rounded-xl animate-pulse" />}>
+          <ProfileLeagues userId={user.id} />
+        </Suspense>
+      )}
+    </div>
+  )
+}
+
+async function ProfileStats({ userId }: { userId: string }) {
+  const supabase = await createClient()
+  const { data: leaderboard } = await supabase.rpc("get_leaderboard")
+  const myRow = leaderboard?.find((r) => r.user_id === userId)
+  const myRank = leaderboard ? leaderboard.findIndex((r) => r.user_id === userId) + 1 : 0
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <StatCard
+        icon={<Trophy className="w-4 h-4 text-[var(--green)]" />}
+        label="Points"
+        value={myRow?.total_points ?? 0}
+      />
+      <StatCard
+        icon={<span className="text-sm">⭐</span>}
+        label="Exact scores"
+        value={myRow?.exact_scores ?? 0}
+      />
+      <StatCard
+        icon={<span className="text-sm">✓</span>}
+        label="Global rank"
+        value={myRank > 0 ? `#${myRank}` : "—"}
+      />
+    </div>
+  )
+}
+
+async function ProfileLeagues({ userId }: { userId: string }) {
+  const supabase = await createClient()
+  const { data: memberships } = await supabase
+    .from("league_members")
+    .select("league_id")
+    .eq("user_id", userId)
+
+  const leagueIds = memberships?.map((m) => m.league_id) ?? []
+  const { data: leagues } = leagueIds.length > 0
+    ? await supabase
+        .from("leagues")
+        .select("id, name, slug, description, visibility, is_archived")
+        .in("id", leagueIds)
+        .order("created_at", { ascending: false })
+    : { data: [] }
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        My Leagues ({leagues?.length ?? 0})
+      </h2>
+      {leagues?.length === 0 ? (
+        <p className="text-sm text-muted-foreground">You haven&apos;t joined any leagues yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {(leagues ?? []).map((league) => (
+            <LeagueCard
+              key={league.id}
+              league={{ ...league, visibility: league.visibility as "public" | "private" }}
+            />
+          ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2 text-center">
+          <div className="h-8 w-12 mx-auto bg-secondary rounded animate-pulse" />
+          <div className="h-3 w-16 mx-auto bg-secondary rounded animate-pulse" />
+        </div>
+      ))}
     </div>
   )
 }
