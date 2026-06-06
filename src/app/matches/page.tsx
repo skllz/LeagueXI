@@ -128,7 +128,7 @@ export default async function MatchesPage() {
             key={round}
             round={round}
             matchCount={roundMatches.length}
-            defaultOpen={false}
+            defaultOpen={round === "Group Stage"}
           >
             {roundMatches.map((match) => (
               <MatchCard
