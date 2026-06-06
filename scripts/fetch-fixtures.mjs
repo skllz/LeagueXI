@@ -1,15 +1,17 @@
 /**
- * Fetches World Cup 2026 fixtures from football-data.org and inserts them into Supabase.
+ * Fetches World Cup 2026 fixtures from football-data.org and upserts into Supabase.
+ * Safe to re-run at any time — knockout matches update in-place as teams are confirmed.
  *
  * Usage:
- *   1. Get a free API key at https://www.football-data.org/client/register
- *   2. node scripts/fetch-fixtures.mjs <FOOTBALL_DATA_API_KEY>
+ *   node scripts/fetch-fixtures.mjs <FOOTBALL_DATA_API_KEY>
  *
- * Requires: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local
+ * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local
  */
 
 import { readFileSync } from "fs"
 import { createClient } from "@supabase/supabase-js"
+
+const TBD_TEAM_UUID = "00000000-0000-0000-0000-000000000000"
 
 // Load env from .env.local
 const env = {}
@@ -34,7 +36,7 @@ if (!FD_KEY) {
 }
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local")
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local")
   process.exit(1)
 }
 
@@ -49,26 +51,25 @@ async function main() {
 
   if (!res.ok) {
     console.error(`API error: ${res.status} ${res.statusText}`)
-    const text = await res.text()
-    console.error(text)
+    console.error(await res.text())
     process.exit(1)
   }
 
   const data = await res.json()
   const matches = data.matches ?? []
-  console.log(`Got ${matches.length} matches`)
+  console.log(`Got ${matches.length} total matches from API`)
 
-  // Filter out matches with TBD/null teams (knockout stage placeholders)
-  const knownMatches = matches.filter(
-    (m) => m.homeTeam?.name && m.awayTeam?.name
+  // Ensure TBD placeholder team exists
+  await supabase.from("teams").upsert(
+    { id: TBD_TEAM_UUID, name: "TBD", short_name: "TBD", country: "TBD" },
+    { onConflict: "id" }
   )
-  console.log(`${knownMatches.length} matches have confirmed teams (${matches.length - knownMatches.length} TBD skipped)`)
 
-  // Upsert teams
+  // Collect all real teams (known matches only)
   const teamMap = new Map()
-  for (const m of knownMatches) {
+  for (const m of matches) {
     for (const team of [m.homeTeam, m.awayTeam]) {
-      if (!teamMap.has(team.id)) {
+      if (team?.id && team?.name) {
         teamMap.set(team.id, {
           id: toUUID(team.id),
           name: team.name,
@@ -80,16 +81,12 @@ async function main() {
     }
   }
 
-  const teams = Array.from(teamMap.values())
-  console.log(`Upserting ${teams.length} teams...`)
-
-  const { error: teamsError } = await supabase
-    .from("teams")
-    .upsert(teams, { onConflict: "id" })
-
-  if (teamsError) {
-    console.error("Teams upsert error:", teamsError.message)
-    process.exit(1)
+  if (teamMap.size > 0) {
+    console.log(`Upserting ${teamMap.size} teams...`)
+    const { error } = await supabase
+      .from("teams")
+      .upsert(Array.from(teamMap.values()), { onConflict: "id" })
+    if (error) { console.error("Teams error:", error.message); process.exit(1) }
   }
 
   // Get competition
@@ -104,45 +101,42 @@ async function main() {
     process.exit(1)
   }
 
-  // Upsert matches
-  const matchRows = knownMatches.map((m) => ({
+  // Build match rows — use TBD UUID for unconfirmed knockout teams.
+  // Upsert by ID so re-running updates teams once confirmed by the API.
+  const matchRows = matches.map((m) => ({
     id: toUUID(m.id),
     competition_id: competition.id,
-    home_team_id: toUUID(m.homeTeam.id),
-    away_team_id: toUUID(m.awayTeam.id),
+    home_team_id: m.homeTeam?.id ? toUUID(m.homeTeam.id) : TBD_TEAM_UUID,
+    away_team_id: m.awayTeam?.id ? toUUID(m.awayTeam.id) : TBD_TEAM_UUID,
     kickoff_at: m.utcDate,
     status: mapStatus(m.status),
     home_score: m.score?.fullTime?.home ?? null,
     away_score: m.score?.fullTime?.away ?? null,
-    round: formatRound(m.stage, m.matchday),
+    round: formatRound(m.stage),
   }))
 
-  console.log(`Upserting ${matchRows.length} matches...`)
+  const tbd = matchRows.filter(r => r.home_team_id === TBD_TEAM_UUID).length
+  console.log(`Upserting ${matchRows.length} matches (${tbd} TBD knockout placeholders)...`)
 
-  // Insert in batches of 50
   for (let i = 0; i < matchRows.length; i += 50) {
-    const batch = matchRows.slice(i, i + 50)
     const { error } = await supabase
       .from("matches")
-      .upsert(batch, { onConflict: "id" })
-    if (error) {
-      console.error(`Batch ${i / 50 + 1} error:`, error.message)
-      process.exit(1)
-    }
+      .upsert(matchRows.slice(i, i + 50), { onConflict: "id" })
+    if (error) { console.error(`Batch error:`, error.message); process.exit(1) }
   }
 
-  console.log("✓ Done! All fixtures imported.")
+  console.log("✓ Done! Re-run this script after each round to update knockout teams.")
 }
 
-function formatRound(stage, matchday) {
+function formatRound(stage) {
   switch (stage) {
-    case "GROUP_STAGE": return matchday ? `Group Stage – Matchday ${matchday}` : "Group Stage"
-    case "ROUND_OF_32": return "Round of 32"
-    case "ROUND_OF_16": return "Round of 16"
+    case "GROUP_STAGE":    return "Group Stage"
+    case "ROUND_OF_32":   return "Round of 32"
+    case "ROUND_OF_16":   return "Round of 16"
     case "QUARTER_FINALS": return "Quarter-finals"
-    case "SEMI_FINALS": return "Semi-finals"
-    case "THIRD_PLACE": return "Third Place Play-off"
-    case "FINAL": return "Final"
+    case "SEMI_FINALS":   return "Semi-finals"
+    case "THIRD_PLACE":   return "Third Place Play-off"
+    case "FINAL":         return "Final"
     default: return stage ? stage.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null
   }
 }
@@ -155,9 +149,9 @@ function toUUID(numericId) {
 function mapStatus(s) {
   switch (s) {
     case "SCHEDULED":
-    case "TIMED": return "scheduled"
+    case "TIMED":    return "scheduled"
     case "IN_PLAY":
-    case "PAUSED": return "live"
+    case "PAUSED":   return "live"
     case "FINISHED": return "completed"
     case "POSTPONED": return "postponed"
     case "CANCELLED":
