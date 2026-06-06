@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { upsertPrediction } from "@/app/actions/predictions"
 import { CheckCircle2, Loader2, Lock, Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SignInModal } from "./sign-in-modal"
 
 interface PredictionInputProps {
   matchId: string
@@ -89,9 +90,31 @@ export function PredictionInput({
     )
   }
 
+  const [showSignIn, setShowSignIn] = useState(false)
+
   if (!isLoggedIn) {
     return (
-      <span className="text-muted-foreground text-xs">Sign in to predict</span>
+      <>
+        <SignInModal open={showSignIn} onOpenChange={setShowSignIn} />
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSignIn(true)}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-muted-foreground text-lg font-bold w-9 sm:w-10 text-center">–</span>
+            <button
+              onClick={() => setShowSignIn(true)}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">Tap to predict</span>
+        </div>
+      </>
     )
   }
 

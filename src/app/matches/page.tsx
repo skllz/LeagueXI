@@ -1,18 +1,69 @@
 import { createClient } from "@/lib/supabase/server"
-import { groupMatchesByDay, formatMatchDay } from "@/lib/utils/date"
 import { MatchCard } from "@/components/matches/match-card"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { RoundGroup } from "@/components/matches/round-group"
 import { CalendarDays } from "lucide-react"
 
 export const revalidate = 60
 
+type MatchWithTeams = {
+  id: string
+  kickoff_at: string
+  status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+  home_score: number | null
+  away_score: number | null
+  round: string | null
+  home_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
+  away_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
+}
+
+function groupByRound(matches: MatchWithTeams[]): { round: string; matches: MatchWithTeams[] }[] {
+  const map = new Map<string, MatchWithTeams[]>()
+  for (const m of matches) {
+    const key = m.round ?? "Other"
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(m)
+  }
+  // Sort rounds: group stage matchdays first, then knockout rounds
+  const order = [
+    "Group Stage – Matchday 1",
+    "Group Stage – Matchday 2",
+    "Group Stage – Matchday 3",
+    "Round of 32",
+    "Round of 16",
+    "Quarter-finals",
+    "Semi-finals",
+    "Third Place Play-off",
+    "Final",
+  ]
+  return Array.from(map.entries())
+    .sort(([a], [b]) => {
+      const ai = order.indexOf(a)
+      const bi = order.indexOf(b)
+      if (ai === -1 && bi === -1) return a.localeCompare(b)
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+    .map(([round, matches]) => ({ round, matches: matches.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)) }))
+}
+
+function findNextRound(groups: { round: string; matches: MatchWithTeams[] }[]): string | null {
+  const now = new Date()
+  for (const group of groups) {
+    if (group.matches.some((m) => new Date(m.kickoff_at) > now && m.status === "scheduled")) {
+      return group.round
+    }
+    if (group.matches.some((m) => m.status === "live")) {
+      return group.round
+    }
+  }
+  return null
+}
+
 export default async function MatchesPage() {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Get active competition
   const { data: competition } = await supabase
     .from("competitions")
     .select("id, name")
@@ -24,18 +75,15 @@ export default async function MatchesPage() {
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-3">
         <CalendarDays className="w-10 h-10 mx-auto text-muted-foreground" />
         <h1 className="text-xl font-bold">No active competition</h1>
-        <p className="text-muted-foreground text-sm">
-          Fixtures will appear here once the competition is set up.
-        </p>
+        <p className="text-muted-foreground text-sm">Fixtures will appear here once set up.</p>
       </div>
     )
   }
 
-  // Get all matches with teams
   const { data: rawMatches } = await supabase
     .from("matches")
     .select(`
-      id, competition_id, kickoff_at, status, home_score, away_score,
+      id, kickoff_at, status, home_score, away_score, round,
       home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
       away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
     `)
@@ -43,30 +91,19 @@ export default async function MatchesPage() {
     .not("status", "eq", "cancelled")
     .order("kickoff_at", { ascending: true })
 
-  const matches = (rawMatches ?? []) as unknown as Array<{
-    id: string
-    kickoff_at: string
-    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
-    home_score: number | null
-    away_score: number | null
-    home_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
-    away_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
-  }>
+  const matches = (rawMatches ?? []) as unknown as MatchWithTeams[]
 
   if (matches.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-3">
         <CalendarDays className="w-10 h-10 mx-auto text-muted-foreground" />
         <h1 className="text-xl font-bold">No fixtures yet</h1>
-        <p className="text-muted-foreground text-sm">
-          {competition.name} fixtures will appear here once they&apos;re loaded.
-        </p>
+        <p className="text-muted-foreground text-sm">{competition.name} fixtures will appear here once loaded.</p>
       </div>
     )
   }
 
-  // Get user's predictions
-  const matchIds = matches.map((m) => m.id)
+  // Fetch predictions for logged-in user only
   let predictionMap: Record<string, {
     predicted_home_score: number
     predicted_away_score: number
@@ -79,45 +116,37 @@ export default async function MatchesPage() {
       .from("predictions")
       .select("match_id, predicted_home_score, predicted_away_score, points, is_locked")
       .eq("user_id", user.id)
-      .in("match_id", matchIds)
+      .in("match_id", matches.map((m) => m.id))
 
     for (const p of predictions ?? []) {
       predictionMap[p.match_id] = p
     }
   }
 
-  const grouped = groupMatchesByDay(matches)
+  const predictedCount = Object.keys(predictionMap).length
+  const groups = groupByRound(matches)
+  const nextRound = findNextRound(groups)
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{competition.name}</h1>
-          {!user && (
-            <p className="text-muted-foreground text-sm mt-1">
-              <Link href="/auth/login" className="underline underline-offset-2 hover:text-foreground">
-                Sign in
-              </Link>{" "}
-              to submit your predictions
-            </p>
-          )}
-        </div>
-        {user && (
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">
-              {Object.keys(predictionMap).length} / {matches.length} predicted
-            </p>
-          </div>
+        <h1 className="text-2xl font-bold">{competition.name}</h1>
+        {user && predictedCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {predictedCount} / {matches.length} predicted
+          </p>
         )}
       </div>
 
-      {grouped.map(({ day, matches: dayMatches }) => (
-        <section key={day} className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {formatMatchDay(dayMatches[0].kickoff_at)}
-          </h2>
-          <div className="space-y-2">
-            {dayMatches.map((match) => (
+      <div className="space-y-4">
+        {groups.map(({ round, matches: roundMatches }) => (
+          <RoundGroup
+            key={round}
+            round={round}
+            matchCount={roundMatches.length}
+            defaultOpen={round === nextRound}
+          >
+            {roundMatches.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}
@@ -125,17 +154,9 @@ export default async function MatchesPage() {
                 isLoggedIn={!!user}
               />
             ))}
-          </div>
-        </section>
-      ))}
-
-      {!user && (
-        <div className="text-center py-8">
-          <Button asChild className="bg-[var(--green)] hover:bg-[var(--green)]/90 text-white">
-            <Link href="/auth/login">Sign in to predict</Link>
-          </Button>
-        </div>
-      )}
+          </RoundGroup>
+        ))}
+      </div>
     </div>
   )
 }

@@ -100,6 +100,7 @@ export type Database = {
           status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
           home_score: number | null
           away_score: number | null
+          round: string | null
           created_at: string
           updated_at: string
         }
@@ -112,6 +113,7 @@ export type Database = {
           status?: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
           home_score?: number | null
           away_score?: number | null
+          round?: string | null
         }
         Update: {
           competition_id?: string
@@ -121,6 +123,7 @@ export type Database = {
           status?: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
           home_score?: number | null
           away_score?: number | null
+          round?: string | null
           updated_at?: string
         }
         Relationships: [
