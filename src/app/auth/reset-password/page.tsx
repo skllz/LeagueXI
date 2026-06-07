@@ -1,19 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { updatePassword } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-// Session is already established by /auth/callback before redirecting here.
-// All we need to do is let the user set their new password via updateUser.
+// Session is established server-side by /auth/callback before redirecting here.
+// updatePassword is a server action that reads HttpOnly session cookies directly —
+// avoids the browser client "Auth session missing!" issue.
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +27,10 @@ export default function ResetPasswordPage() {
     }
     setLoading(true)
     setMessage(null)
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) {
-      setMessage({ text: error.message, ok: false })
+
+    const result = await updatePassword(password)
+    if (result.error) {
+      setMessage({ text: result.error, ok: false })
       setLoading(false)
     } else {
       window.location.href = "/matches"
