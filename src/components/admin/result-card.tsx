@@ -5,7 +5,7 @@ import { updateMatchResult, setMatchLive, recalculateMatch } from "@/app/actions
 import { Button } from "@/components/ui/button"
 import { getFlagUrl } from "@/lib/utils/flags"
 import { FlagImage } from "@/components/matches/flag-image"
-import { formatKickoff } from "@/lib/utils/date"
+import { ClientTime } from "@/components/matches/client-time"
 import { cn } from "@/lib/utils"
 import { Loader2, RefreshCw } from "lucide-react"
 
@@ -78,7 +78,7 @@ export function ResultCard({ match }: ResultCardProps) {
     )}>
       {/* Match header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{formatKickoff(match.kickoff_at)}</span>
+        <span className="text-xs text-muted-foreground"><ClientTime isoString={match.kickoff_at} /></span>
         <span className={cn(
           "text-xs font-semibold px-2 py-0.5 rounded-full",
           match.status === "live" ? "bg-[var(--green)] text-white" :
