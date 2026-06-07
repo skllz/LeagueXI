@@ -9,58 +9,71 @@ import { Separator } from "@/components/ui/separator"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const supabase = createClient()
 
-  // Always redirect through the canonical domain — prevents Supabase raw URL showing
-  // in the address bar and ensures the callback lands on leaguexi.io in production.
-  // NEXT_PUBLIC_SITE_URL is set in Vercel env vars; falls back to current origin in dev.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
   const callbackUrl = `${siteUrl}/auth/callback`
 
   const signInWithGoogle = async () => {
     setLoading(true)
-    setError(null)
+    setMessage(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: callbackUrl,
-      },
+      options: { redirectTo: callbackUrl },
     })
-    if (error) setError(error.message)
+    if (error) setMessage({ text: error.message, ok: false })
     setLoading(false)
   }
 
-  const signInWithEmail = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    if (!email || !password) return
     setLoading(true)
-    setError(null)
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: callbackUrl,
-      },
-    })
-    if (error) {
-      setError(error.message)
-    } else {
-      setSent(true)
-    }
-    setLoading(false)
-  }
+    setMessage(null)
 
-  if (sent) {
-    return (
-      <div className="text-center space-y-3 p-6 border border-border rounded-lg bg-card">
-        <p className="font-medium">Check your inbox</p>
-        <p className="text-sm text-muted-foreground">
-          We sent a magic link to <strong>{email}</strong>. Click it to sign in.
-        </p>
-      </div>
-    )
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: callbackUrl },
+      })
+      if (error) {
+        setMessage({ text: error.message, ok: false })
+      } else {
+        setMessage({ text: "Account created! You can now sign in.", ok: true })
+        setIsSignUp(false)
+        setPassword("")
+      }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) {
+        setMessage({ text: error.message, ok: false })
+      } else if (data.user) {
+        // Check profile to send admin to the right place
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username, is_admin")
+          .eq("id", data.user.id)
+          .maybeSingle()
+
+        if (!profile?.username) {
+          window.location.href = "/onboarding"
+        } else if (profile.is_admin) {
+          window.location.href = "/admin"
+        } else {
+          window.location.href = "/matches"
+        }
+      }
+    }
+
+    setLoading(false)
   }
 
   return (
@@ -81,7 +94,7 @@ export function LoginForm() {
         <Separator className="flex-1" />
       </div>
 
-      <form onSubmit={signInWithEmail} className="space-y-3">
+      <form onSubmit={handleEmailAuth} className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email address</Label>
           <Input
@@ -94,14 +107,33 @@ export function LoginForm() {
             className="bg-card border-border"
           />
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="bg-card border-border"
+          />
+        </div>
+        {message && (
+          <p className={`text-xs ${message.ok ? "text-[var(--green)]" : "text-destructive"}`}>
+            {message.text}
+          </p>
+        )}
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Sending..." : "Send magic link"}
+          {loading ? "Please wait..." : isSignUp ? "Create account" : "Sign in"}
         </Button>
       </form>
 
-      <p className="text-xs text-center text-muted-foreground">
-        By signing in, you agree to our terms. No passwords, ever.
+      <p
+        className="text-xs text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+        onClick={() => { setIsSignUp(!isSignUp); setMessage(null) }}
+      >
+        {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
       </p>
     </div>
   )
