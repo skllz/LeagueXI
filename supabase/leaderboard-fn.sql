@@ -28,7 +28,7 @@ as $$
     p.created_at as member_since
   from public.profiles p
   left join public.predictions pr on pr.user_id = p.id
-  where p.is_admin = false
+  where p.is_admin is not true
     and p.username is not null
   group by p.id, p.username, p.avatar_url, p.created_at
   order by total_points desc, exact_scores desc, correct_results desc, p.created_at asc;
@@ -61,7 +61,7 @@ as $$
   join public.profiles p on p.id = lm.user_id
   left join public.predictions pr on pr.user_id = p.id
   where lm.league_id = p_league_id
-    and p.is_admin = false
+    and p.is_admin is not true
     and p.username is not null
   group by p.id, p.username, p.avatar_url, lm.joined_at
   order by total_points desc, exact_scores desc, correct_results desc, lm.joined_at asc;
