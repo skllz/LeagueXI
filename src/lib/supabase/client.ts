@@ -2,13 +2,15 @@ import { createBrowserClient } from "@supabase/ssr"
 import type { Database } from "@/types/database"
 
 export function createClient() {
-  // Browser traffic routes through the leaguexi.io proxy so users in
-  // regions that block Supabase directly (e.g. some African ISPs) can
-  // still connect. Falls back to direct URL if proxy var is not set.
+  // Route browser traffic through our own API proxy so users in regions
+  // where Supabase.co is blocked (e.g. some Nigerian ISPs) can still connect.
+  // Derived from window.location.origin at runtime — no build-time env var
+  // needed, works automatically in any environment (prod, staging, localhost).
+  // Falls back to direct URL during SSR (window is not defined server-side).
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_PROXY_URL ??
-    process.env.NEXT_PUBLIC_SUPABASE_URL ??
-    "https://placeholder.supabase.co"
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/supabase-proxy`
+      : (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co")
 
   return createBrowserClient<Database>(
     supabaseUrl,
