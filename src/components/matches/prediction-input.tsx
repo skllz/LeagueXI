@@ -34,6 +34,9 @@ export function PredictionInput({
   const [errorMsg, setErrorMsg] = useState("")
   const [showSignIn, setShowSignIn] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // Track deletion locally so the Remove button disappears immediately
+  // without waiting for a prop change from the server re-render
+  const [deleted, setDeleted] = useState(false)
   const isDirtyRef = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -70,12 +73,17 @@ export function PredictionInput({
       setErrorMsg(result.error)
       setDeleting(false)
     } else {
-      // Reset to unpredicted state immediately, then let server state sync
+      // Mark as deleted so the Remove button disappears immediately.
+      // initialHome is a prop and won't change until the component remounts,
+      // so we track deletion in local state instead of relying on the prop.
+      setDeleted(true)
       setHome(0)
       setAway(0)
       setSaveState("idle")
       setDeleting(false)
-      router.refresh()
+      // Hard reload to sync server state — router.refresh() is not reliable
+      // when the page has revalidate = 60 and the component is mid-render.
+      window.location.reload()
     }
   }
 
@@ -177,8 +185,8 @@ export function PredictionInput({
         />
       </div>
 
-      {/* Remove prediction — only shown when a prediction exists */}
-      {initialHome !== null && (
+      {/* Remove prediction — only shown when a prediction exists and hasn't been deleted */}
+      {initialHome !== null && !deleted && (
         <button
           onClick={handleDelete}
           disabled={deleting}
