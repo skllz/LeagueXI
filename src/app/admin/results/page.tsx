@@ -1,23 +1,36 @@
 import { createClient } from "@/lib/supabase/server"
 import { ResultCard } from "@/components/admin/result-card"
-import { ClipboardList } from "lucide-react"
+import { ClipboardList, FlaskConical } from "lucide-react"
+import Link from "next/link"
 
 export const revalidate = 0
 
-export default async function AdminResultsPage() {
+export default async function AdminResultsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ showAll?: string }>
+}) {
+  const { showAll } = await searchParams
+  const testMode = showAll === "1"
+
   const supabase = await createClient()
 
-  // Fetch matches where kickoff has passed, grouped by status
-  const { data: rawMatches } = await supabase
+  // In test mode: show all matches. Normally: only matches that have kicked off.
+  let query = supabase
     .from("matches")
     .select(`
       id, kickoff_at, status, home_score, away_score,
       home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
       away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
     `)
-    .lte("kickoff_at", new Date().toISOString())
     .not("status", "eq", "cancelled")
     .order("kickoff_at", { ascending: false })
+
+  if (!testMode) {
+    query = query.lte("kickoff_at", new Date().toISOString())
+  }
+
+  const { data: rawMatches } = await query
 
   const matches = (rawMatches ?? []) as unknown as Array<{
     id: string
@@ -34,9 +47,22 @@ export default async function AdminResultsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
-      <div className="flex items-center gap-2">
-        <ClipboardList className="w-5 h-5 text-[var(--green)]" />
-        <h1 className="text-2xl font-bold">Result Entry</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ClipboardList className="w-5 h-5 text-[var(--green)]" />
+          <h1 className="text-2xl font-bold">Result Entry</h1>
+        </div>
+        <Link
+          href={testMode ? "/admin/results" : "/admin/results?showAll=1"}
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+            testMode
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25"
+              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          {testMode ? "Test mode ON" : "Show all matches"}
+        </Link>
       </div>
 
       {/* Admin nav */}
@@ -44,9 +70,16 @@ export default async function AdminResultsPage() {
         <span className="font-semibold border-b-2 border-[var(--green)] pb-1">Results</span>
       </div>
 
+      {/* Test mode banner */}
+      {testMode && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+          <span className="font-semibold">Test mode</span> — showing all {matches.length} matches regardless of kickoff time. Prediction locking is unaffected.
+        </div>
+      )}
+
       {matches.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          No matches have kicked off yet.
+          {testMode ? "No matches found." : "No matches have kicked off yet."}
         </div>
       )}
 
