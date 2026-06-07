@@ -13,6 +13,7 @@ export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [resetSent, setResetSent] = useState(false)
   const supabase = createClient()
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
@@ -26,6 +27,24 @@ export function LoginForm() {
       options: { redirectTo: callbackUrl },
     })
     if (error) setMessage({ text: error.message, ok: false })
+    setLoading(false)
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setMessage({ text: "Enter your email address above first.", ok: false })
+      return
+    }
+    setLoading(true)
+    setMessage(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/auth/reset-password`,
+    })
+    if (error) {
+      setMessage({ text: error.message, ok: false })
+    } else {
+      setResetSent(true)
+    }
     setLoading(false)
   }
 
@@ -74,6 +93,23 @@ export function LoginForm() {
     }
 
     setLoading(false)
+  }
+
+  if (resetSent) {
+    return (
+      <div className="text-center space-y-3 p-6 border border-border rounded-lg bg-card">
+        <p className="font-medium">Check your inbox</p>
+        <p className="text-sm text-muted-foreground">
+          We sent a password reset link to <strong>{email}</strong>.
+        </p>
+        <p
+          className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+          onClick={() => setResetSent(false)}
+        >
+          Back to sign in
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -129,12 +165,22 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p
-        className="text-xs text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-        onClick={() => { setIsSignUp(!isSignUp); setMessage(null) }}
-      >
-        {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-      </p>
+      <div className="space-y-2">
+        <p
+          className="text-xs text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+          onClick={() => { setIsSignUp(!isSignUp); setMessage(null) }}
+        >
+          {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+        </p>
+        {!isSignUp && (
+          <p
+            className="text-xs text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+            onClick={handleForgotPassword}
+          >
+            Forgot password?
+          </p>
+        )}
+      </div>
     </div>
   )
 }
