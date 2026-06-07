@@ -9,11 +9,19 @@ export async function GET(request: Request) {
   const forwardedHost = request.headers.get("x-forwarded-host")
   const base = forwardedHost ? `https://${forwardedHost}` : origin
 
+  const next = searchParams.get("next")
+
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      // If a next param was set (e.g. password recovery), go straight there —
+      // the session is already established by exchangeCodeForSession above.
+      if (next) {
+        return NextResponse.redirect(`${base}${next}`)
+      }
+
       // After a successful code exchange, determine the right landing page:
       // — no username yet  → /onboarding  (new user)
       // — is_admin = true  → /admin

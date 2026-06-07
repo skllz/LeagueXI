@@ -38,7 +38,9 @@ export function LoginForm() {
     setLoading(true)
     setMessage(null)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/auth/reset-password`,
+      // Route through the server-side callback so PKCE code exchange happens
+      // server-side — avoids cookie mismatch when email opens in a new tab.
+      redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
     })
     if (error) {
       setMessage({ text: error.message, ok: false })
