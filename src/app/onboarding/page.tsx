@@ -20,12 +20,9 @@ export default async function OnboardingPage() {
     redirect("/matches")
   }
 
-  const suggestedUsername = user.user_metadata?.full_name
-    ? user.user_metadata.full_name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")
-        .slice(0, 20)
-    : ""
+  // Do not pre-fill from full_name or email — both can expose PII.
+  // Leave the field blank so users consciously choose their own username.
+  const suggestedUsername = ""
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
