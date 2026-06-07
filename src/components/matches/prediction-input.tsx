@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import { upsertPrediction } from "@/app/actions/predictions"
-import { CheckCircle2, Loader2, Lock, Plus, Minus } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { upsertPrediction, deletePrediction } from "@/app/actions/predictions"
+import { CheckCircle2, Loader2, Lock, Plus, Minus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SignInModal } from "./sign-in-modal"
 
@@ -24,6 +25,7 @@ export function PredictionInput({
   isLoggedIn,
 }: PredictionInputProps) {
   // All hooks declared at the top — React rules require no hooks after conditional returns
+  const router = useRouter()
   const [home, setHome] = useState(initialHome ?? 0)
   const [away, setAway] = useState(initialAway ?? 0)
   const [saveState, setSaveState] = useState<SaveState>(
@@ -31,6 +33,7 @@ export function PredictionInput({
   )
   const [errorMsg, setErrorMsg] = useState("")
   const [showSignIn, setShowSignIn] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const isDirtyRef = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -58,6 +61,23 @@ export function PredictionInput({
   )
 
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    const result = await deletePrediction(matchId)
+    if (result.error) {
+      setSaveState("error")
+      setErrorMsg(result.error)
+      setDeleting(false)
+    } else {
+      // Reset to unpredicted state immediately, then let server state sync
+      setHome(0)
+      setAway(0)
+      setSaveState("idle")
+      setDeleting(false)
+      router.refresh()
+    }
+  }
 
   const adjustScore = (side: "home" | "away", delta: 1 | -1) => {
     isDirtyRef.current = true
@@ -122,38 +142,56 @@ export function PredictionInput({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Home score */}
-      <ScoreControl
-        value={home}
-        onIncrement={() => adjustScore("home", 1)}
-        onDecrement={() => adjustScore("home", -1)}
-      />
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-center gap-3">
+        {/* Home score */}
+        <ScoreControl
+          value={home}
+          onIncrement={() => adjustScore("home", 1)}
+          onDecrement={() => adjustScore("home", -1)}
+        />
 
-      {/* Centre indicator */}
-      <div className="flex items-center justify-center w-7">
-        {saveState === "saving" && (
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        )}
-        {saveState === "saved" && (
-          <CheckCircle2 className="w-5 h-5 text-[var(--green)]" />
-        )}
-        {saveState === "idle" && (
-          <span className="text-muted-foreground font-medium text-lg">-</span>
-        )}
-        {saveState === "error" && (
-          <span className="text-destructive text-[10px] text-center leading-tight max-w-[60px]">
-            {errorMsg}
-          </span>
-        )}
+        {/* Centre indicator */}
+        <div className="flex items-center justify-center w-7">
+          {saveState === "saving" && (
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          )}
+          {saveState === "saved" && (
+            <CheckCircle2 className="w-5 h-5 text-[var(--green)]" />
+          )}
+          {saveState === "idle" && (
+            <span className="text-muted-foreground font-medium text-lg">-</span>
+          )}
+          {saveState === "error" && (
+            <span className="text-destructive text-[10px] text-center leading-tight max-w-[60px]">
+              {errorMsg}
+            </span>
+          )}
+        </div>
+
+        {/* Away score */}
+        <ScoreControl
+          value={away}
+          onIncrement={() => adjustScore("away", 1)}
+          onDecrement={() => adjustScore("away", -1)}
+        />
       </div>
 
-      {/* Away score */}
-      <ScoreControl
-        value={away}
-        onIncrement={() => adjustScore("away", 1)}
-        onDecrement={() => adjustScore("away", -1)}
-      />
+      {/* Remove prediction — only shown when a prediction exists */}
+      {initialHome !== null && (
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className={cn(
+            "flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors",
+            deleting && "opacity-40 cursor-not-allowed"
+          )}
+          aria-label="Remove prediction"
+        >
+          <X className="w-2.5 h-2.5" />
+          {deleting ? "Removing…" : "Remove"}
+        </button>
+      )}
     </div>
   )
 }

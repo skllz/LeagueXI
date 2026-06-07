@@ -14,13 +14,19 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
+  // Always redirect through the canonical domain — prevents Supabase raw URL showing
+  // in the address bar and ensures the callback lands on leaguexi.io in production.
+  // NEXT_PUBLIC_SITE_URL is set in Vercel env vars; falls back to current origin in dev.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+  const callbackUrl = `${siteUrl}/auth/callback`
+
   const signInWithGoogle = async () => {
     setLoading(true)
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
       },
     })
     if (error) setError(error.message)
@@ -35,7 +41,7 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl,
       },
     })
     if (error) {

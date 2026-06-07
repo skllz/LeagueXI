@@ -117,14 +117,17 @@ export async function joinLeagueByCode(
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
   const code = inviteCode.trim().toUpperCase()
-  const { data: league } = await supabase
+  const { data: league, error: lookupError } = await supabase
     .from("leagues")
     .select("id, slug, is_archived, name")
     .eq("invite_code", code)
     .maybeSingle()
 
+  // Temporary debug log — remove once invite flow is confirmed working
+  console.log("[joinLeagueByCode] queried code:", code, "| found league:", league?.name ?? null, "| db error:", lookupError?.message ?? null)
+
   if (!league) return { error: "Invalid invite code" }
-  if (league.is_archived) return { error: "This league is archived and no longer accepting members" }
+  if (league.is_archived) return { error: "This league is no longer accepting members" }
 
   const { data: existing } = await supabase
     .from("league_members")
