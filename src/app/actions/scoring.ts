@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { calculatePoints } from "@/lib/scoring"
 import { revalidatePath } from "next/cache"
 
 async function requireAdmin() {
@@ -95,50 +94,28 @@ export async function recalculateMatch(matchId: string): Promise<{ error?: strin
   return { success: true }
 }
 
-// Returns an error string on failure, null on success
+// Returns an error string on failure, null on success.
+// Delegates to a SECURITY DEFINER Postgres function so the UPDATE runs
+// as the DB owner and is never blocked by RLS.
 async function recalculatePredictions(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   matchId: string,
-  homeScore: number,
-  awayScore: number
+  // homeScore / awayScore unused here — the SQL function reads them from
+  // the matches table directly, keeping the logic in one place.
+  _homeScore: number,
+  _awayScore: number
 ): Promise<string | null> {
-  const { data: predictions, error: fetchError } = await supabase
-    .from("predictions")
-    .select("id, predicted_home_score, predicted_away_score")
-    .eq("match_id", matchId)
+  const { data: count, error } = await supabase.rpc(
+    "recalculate_match_predictions",
+    { p_match_id: matchId }
+  )
 
-  if (fetchError) return fetchError.message
-  if (!predictions?.length) return null
-
-  // Use explicit per-row UPDATE instead of upsert.
-  // Upsert without specifying onConflict falls back to INSERT, which is
-  // blocked by RLS (no admin INSERT policy on predictions). Explicit UPDATE
-  // is covered by the predictions_admin_update policy.
-  const errors: string[] = []
-  for (const p of predictions as {
-    id: string
-    predicted_home_score: number
-    predicted_away_score: number
-  }[]) {
-    const points = calculatePoints(
-      p.predicted_home_score,
-      p.predicted_away_score,
-      homeScore,
-      awayScore
-    )
-    const { error } = await supabase
-      .from("predictions")
-      .update({ points, is_locked: true })
-      .eq("id", p.id)
-
-    if (error) errors.push(error.message)
+  if (error) {
+    console.error("[recalculatePredictions] rpc error:", error.message)
+    return error.message
   }
 
-  if (errors.length > 0) {
-    console.error("[recalculatePredictions] errors:", errors)
-    return `Scored ${predictions.length - errors.length}/${predictions.length} predictions — ${errors[0]}`
-  }
-
+  console.log(`[recalculatePredictions] scored ${count} predictions for match ${matchId}`)
   return null
 }
