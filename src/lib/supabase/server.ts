@@ -5,8 +5,14 @@ import type { Database } from "@/types/database"
 export async function createClient() {
   const cookieStore = await cookies()
 
+  // Server actions / components use the proxy URL so the raw Supabase URL
+  // is never surfaced. Falls back to direct URL if proxy var not set.
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_PROXY_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL!
+
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

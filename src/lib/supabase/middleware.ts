@@ -5,8 +5,11 @@ import type { Database } from "@/types/database"
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  // Middleware runs server-side on Vercel — use the direct Supabase URL
+  // (SUPABASE_URL, server-only) to avoid routing through the proxy on every
+  // request, which would add unnecessary latency.
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
