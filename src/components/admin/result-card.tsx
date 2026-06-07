@@ -38,10 +38,19 @@ export function ResultCard({ match }: ResultCardProps) {
   const handleSave = async () => {
     setLoading(true)
     setMsg(null)
-    const result = await updateMatchResult(match.id, homeScore, awayScore)
+    // Snapshot values before the async call in case state changes mid-flight
+    const savedHome = homeScore
+    const savedAway = awayScore
+    const result = await updateMatchResult(match.id, savedHome, savedAway)
     if (result.error) {
       setMsg({ text: result.error, ok: false })
+      // Restore to what was last confirmed in the DB on failure
+      setHomeScore(match.home_score ?? 0)
+      setAwayScore(match.away_score ?? 0)
     } else {
+      // Lock in the saved values so the UI never resets to 0-0
+      setHomeScore(savedHome)
+      setAwayScore(savedAway)
       setMsg({ text: "Result saved and scores recalculated", ok: true })
     }
     setLoading(false)
