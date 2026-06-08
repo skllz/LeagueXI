@@ -81,9 +81,9 @@ export function PredictionInput({
       setAway(0)
       setSaveState("idle")
       setDeleting(false)
-      // Hard reload to sync server state — router.refresh() is not reliable
-      // when the page has revalidate = 60 and the component is mid-render.
-      window.location.reload()
+      // Refresh server state without a hard reload so expanded matchday
+      // sections stay open.
+      router.refresh()
     }
   }
 
