@@ -271,7 +271,7 @@ export type Database = {
     }
     Functions: {
       get_leaderboard: {
-        Args: Record<string, never>
+        Args: { p_competition_id?: string | null }
         Returns: {
           user_id: string
           username: string
