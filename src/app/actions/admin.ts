@@ -85,9 +85,22 @@ export async function importFixturesCSV(
   return { imported, errors }
 }
 
-export async function deleteMatch(matchId: string): Promise<{ error?: string }> {
+export async function deleteMatch(matchId: string, force = false): Promise<{ error?: string }> {
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { error: authError ?? "Auth failed" }
+
+  // Guard: refuse to silently wipe scored data unless the caller explicitly confirms
+  if (!force) {
+    const { data: match } = await supabase
+      .from("matches")
+      .select("status")
+      .eq("id", matchId)
+      .single()
+    if (match?.status === "live" || match?.status === "completed") {
+      return { error: `Match is ${match.status} — deleting it will erase all predictions and scores. Call deleteMatch with force=true to confirm.` }
+    }
+  }
+
   const { error } = await supabase.from("matches").delete().eq("id", matchId)
   if (error) return { error: error.message }
   revalidatePath("/matches")

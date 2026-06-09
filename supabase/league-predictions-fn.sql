@@ -72,9 +72,10 @@ AS $$
       WHERE league_id = p_league_id AND user_id = p_caller_id
     )
     -- Anti-spoof guard: p_caller_id must match the authenticated JWT.
-    -- auth.uid() is checked but we degrade gracefully if it returns NULL
-    -- (e.g. called server-side where JWT context behaves differently).
-    AND (auth.uid() IS NULL OR auth.uid() = p_caller_id)
+    -- LANGUAGE sql SECURITY DEFINER does not reset session GUC variables, so
+    -- auth.uid() reliably returns the caller's UUID from the PostgREST JWT.
+    -- No IS NULL fallback — a NULL auth.uid() means unauthenticated = block all.
+    AND auth.uid() = p_caller_id
     -- Exclude admins — use IS NOT TRUE to correctly handle NULL values
     AND pr.is_admin IS NOT TRUE
     -- Competition filter: NULL means no filter (show all competitions)

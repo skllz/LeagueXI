@@ -30,9 +30,10 @@ export async function updateMatchResult(
 
   if (
     !Number.isInteger(homeScore) || !Number.isInteger(awayScore) ||
-    homeScore < 0 || awayScore < 0
+    homeScore < 0 || awayScore < 0 ||
+    homeScore > 20 || awayScore > 20
   ) {
-    return { error: "Invalid score" }
+    return { error: "Invalid score (0–20 per team)" }
   }
 
   // Update match result and status.
@@ -121,6 +122,5 @@ async function recalculatePredictions(
     return error.message
   }
 
-  console.log(`[recalculatePredictions] scored ${count} predictions for match ${matchId}`)
   return null
 }

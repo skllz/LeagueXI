@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/
+const RESERVED_USERNAMES = new Set([
+  "create", "admin", "global", "api", "auth",
+  "profile", "matches", "leaderboard", "leagues",
+  "onboarding", "settings", "support", "help",
+])
 
 export function OnboardingForm({
   userId,
@@ -25,6 +30,9 @@ export function OnboardingForm({
   const validate = (val: string) => {
     if (!USERNAME_REGEX.test(val)) {
       return "3–20 characters. Letters, numbers, and underscores only."
+    }
+    if (RESERVED_USERNAMES.has(val)) {
+      return "That username is reserved. Please choose another."
     }
     return null
   }

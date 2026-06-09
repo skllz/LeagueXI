@@ -11,6 +11,7 @@ export default async function AdminUsersPage() {
     .from("profiles")
     .select("id, username, is_admin, created_at")
     .order("created_at", { ascending: false })
+    .limit(500)
 
   return (
     <div className="space-y-4 py-4">

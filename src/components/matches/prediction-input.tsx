@@ -48,6 +48,9 @@ export function PredictionInput({
       if (result.error) {
         setSaveState("error")
         setErrorMsg(result.error)
+        // Roll back optimistic UI so the displayed scores match what's saved
+        setHome(initialHome ?? 0)
+        setAway(initialAway ?? 0)
       } else {
         setSaveState("saved")
       }

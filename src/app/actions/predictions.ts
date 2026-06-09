@@ -28,7 +28,7 @@ export async function upsertPrediction(
     .single()
 
   if (!match) return { error: "Match not found" }
-  if (new Date(match.kickoff_at) <= new Date()) return { error: "This match has already kicked off" }
+  if (new Date(match.kickoff_at) < new Date()) return { error: "This match has already kicked off" }
   if (match.status !== "scheduled") return { error: "Predictions are locked for this match" }
 
   if (

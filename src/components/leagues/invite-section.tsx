@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Copy, Check, MessageCircle } from "lucide-react"
 
 interface InviteSectionProps {
-  inviteCode: string
+  inviteCode: string | null
   leagueSlug: string
   leagueName: string
 }
@@ -13,6 +13,9 @@ interface InviteSectionProps {
 export function InviteSection({ inviteCode, leagueSlug, leagueName }: InviteSectionProps) {
   const [copiedCode, setCopiedCode] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+
+  // inviteCode is only null when the parent fetch failed — degrade gracefully
+  if (!inviteCode) return null
 
   const inviteLink = `${window.location.origin}/leagues/${leagueSlug}?join=${inviteCode}`
 

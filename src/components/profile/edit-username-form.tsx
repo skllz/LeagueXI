@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Check, Pencil } from "lucide-react"
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/
+const RESERVED_USERNAMES = new Set([
+  "create", "admin", "global", "api", "auth",
+  "profile", "matches", "leaderboard", "leagues",
+  "onboarding", "settings", "support", "help",
+])
 
 export function EditUsernameForm({
   userId,
@@ -26,6 +31,10 @@ export function EditUsernameForm({
   const handleSave = async () => {
     if (!USERNAME_REGEX.test(value)) {
       setError("3–20 characters, letters, numbers and underscores only")
+      return
+    }
+    if (RESERVED_USERNAMES.has(value)) {
+      setError("That username is reserved. Please choose another.")
       return
     }
     setLoading(true)

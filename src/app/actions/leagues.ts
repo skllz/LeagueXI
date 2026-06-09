@@ -331,9 +331,23 @@ export async function updateLeague(
     updates.prize_description = updates.prize_description.trim() || null
   }
 
+  // Explicitly whitelist updatable fields — prevents slug/owner_id injection
+  // if this action is ever called with a spread of unknown data.
+  const safeUpdates: {
+    updated_at: string
+    name?: string
+    description?: string | null
+    visibility?: "public" | "private"
+    prize_description?: string | null
+  } = { updated_at: new Date().toISOString() }
+  if (updates.name !== undefined)             safeUpdates.name             = updates.name
+  if (updates.description !== undefined)      safeUpdates.description      = updates.description
+  if (updates.visibility !== undefined)       safeUpdates.visibility       = updates.visibility
+  if (updates.prize_description !== undefined) safeUpdates.prize_description = updates.prize_description
+
   const { data, error } = await supabase
     .from("leagues")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(safeUpdates)
     .eq("id", leagueId)
     .eq("owner_id", user.id)
     .select("id")

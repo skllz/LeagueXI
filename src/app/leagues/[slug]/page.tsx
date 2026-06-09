@@ -31,7 +31,7 @@ export default async function LeaguePage({
 
   const { data: league } = await supabase
     .from("leagues")
-    .select("id, name, slug, description, visibility, prize_description, is_archived, invite_code, owner_id, competition_id")
+    .select("id, name, slug, description, visibility, prize_description, is_archived, owner_id, competition_id")
     .eq("slug", slug)
     .single()
 
@@ -62,6 +62,17 @@ export default async function LeaguePage({
   }
 
   const canView = league.visibility === "public" || isMember || isAdmin
+
+  // Fetch invite code only for members/admins — not exposed to anonymous viewers
+  let inviteCode: string | null = null
+  if ((isMember || isAdmin) && user) {
+    const { data: codeData } = await supabase
+      .from("leagues")
+      .select("invite_code")
+      .eq("id", league.id)
+      .single()
+    inviteCode = codeData?.invite_code ?? null
+  }
 
   // Private league, not a member — show join wall
   if (!canView) {
@@ -214,7 +225,7 @@ export default async function LeaguePage({
         {/* Invite section for members */}
         {(isMember || isAdmin) && (
           <InviteSection
-            inviteCode={league.invite_code}
+            inviteCode={inviteCode}
             leagueSlug={league.slug}
             leagueName={league.name}
           />

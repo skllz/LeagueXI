@@ -27,9 +27,11 @@ create policy "leagues_read" on public.leagues
     or exists (select 1 from public.profiles where id = auth.uid() and is_admin = true)
   );
 
--- League members: visible if you share the league, or admin
+-- League members: visible if you share the league, admin, or the league is public
+-- (public leagues need member visibility so non-members can see the Members tab)
 create policy "league_members_read" on public.league_members
   for select using (
     league_id in (select public.get_user_league_ids(auth.uid()))
     or exists (select 1 from public.profiles where id = auth.uid() and is_admin = true)
+    or exists (select 1 from public.leagues where id = league_id and visibility = 'public')
   );
