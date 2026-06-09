@@ -198,9 +198,13 @@ export function LeaveLeagueButton({ leagueId }: { leagueId: string }) {
   const handleLeave = async () => {
     if (!confirm("Leave this league?")) return
     setLoading(true)
-    const result = await leaveLeague(leagueId)
-    if (result.error) { alert(result.error); setLoading(false) }
-    else router.push("/leagues")
+    try {
+      const result = await leaveLeague(leagueId)
+      if (result.error) alert(result.error)
+      else router.push("/leagues")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

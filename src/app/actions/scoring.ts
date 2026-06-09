@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "@/types/database"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -61,12 +63,16 @@ export async function setMatchLive(matchId: string): Promise<{ error?: string; s
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
-  const { error } = await supabase
+  const { data: updatedMatch, error } = await supabase
     .from("matches")
     .update({ status: "live" })
     .eq("id", matchId)
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+  if (!updatedMatch) return { error: "Match update blocked — check admin RLS policy on matches table" }
+
   revalidatePath("/matches")
   revalidatePath("/admin/results")
   return { success: true }
@@ -98,8 +104,7 @@ export async function recalculateMatch(matchId: string): Promise<{ error?: strin
 // Delegates to a SECURITY DEFINER Postgres function so the UPDATE runs
 // as the DB owner and is never blocked by RLS.
 async function recalculatePredictions(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   matchId: string,
   // homeScore / awayScore unused here — the SQL function reads them from
   // the matches table directly, keeping the logic in one place.

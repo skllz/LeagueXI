@@ -22,9 +22,9 @@ as $$
     p.id as user_id,
     p.username,
     p.avatar_url,
-    coalesce(sum(pr.points), 0) as total_points,
-    count(pr.points) filter (where pr.points = 5) as exact_scores,
-    count(pr.points) filter (where pr.points = 3) as correct_results,
+    coalesce(sum(pr.points), 0)::integer as total_points,
+    count(pr.points) filter (where pr.points = 5)::integer as exact_scores,
+    count(pr.points) filter (where pr.points = 3)::integer as correct_results,
     p.created_at as member_since
   from public.profiles p
   left join public.predictions pr on pr.user_id = p.id
@@ -61,9 +61,9 @@ as $$
     p.id as user_id,
     p.username,
     p.avatar_url,
-    coalesce(sum(filtered_pr.points), 0) as total_points,
-    count(filtered_pr.points) filter (where filtered_pr.points = 5) as exact_scores,
-    count(filtered_pr.points) filter (where filtered_pr.points = 3) as correct_results,
+    coalesce(sum(filtered_pr.points), 0)::integer as total_points,
+    count(filtered_pr.points) filter (where filtered_pr.points = 5)::integer as exact_scores,
+    count(filtered_pr.points) filter (where filtered_pr.points = 3)::integer as correct_results,
     lm.joined_at
   from public.league_members lm
   join public.profiles p on p.id = lm.user_id

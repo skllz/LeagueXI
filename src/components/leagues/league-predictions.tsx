@@ -112,7 +112,9 @@ export function LeaguePredictions({
   // Group matches by LOCAL calendar date (browser timezone — we're a client component)
   const dateMap = new Map<string, { sortKey: string; matches: MatchGroup[] }>()
   for (const match of allMatches) {
-    const localDate = new Date(match.kickoff_at).toLocaleDateString()
+    // Use "en-CA" locale to produce a stable YYYY-MM-DD key in the user's local
+    // timezone — same approach as local-day-groups.tsx.
+    const localDate = new Date(match.kickoff_at).toLocaleDateString("en-CA")
     if (!dateMap.has(localDate)) {
       dateMap.set(localDate, { sortKey: match.kickoff_at, matches: [] })
     }
