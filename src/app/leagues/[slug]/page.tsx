@@ -31,7 +31,7 @@ export default async function LeaguePage({
 
   const { data: league } = await supabase
     .from("leagues")
-    .select("id, name, slug, description, visibility, prize_description, is_archived, invite_code, owner_id")
+    .select("id, name, slug, description, visibility, prize_description, is_archived, invite_code, owner_id, competition_id")
     .eq("slug", slug)
     .single()
 
@@ -86,10 +86,23 @@ export default async function LeaguePage({
     p_league_id: league.id,
   })
 
+  // Resolve the competition for prediction filtering:
+  // use the league's own competition_id; if null, fall back to the active competition.
+  const { data: activeComp } = await supabase
+    .from("competitions")
+    .select("id")
+    .eq("is_active", true)
+    .maybeSingle()
+
+  const competitionId = league.competition_id ?? activeComp?.id ?? null
+
   // Fetch league predictions (members only — RPC enforces this server-side too)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: predictionRows } = (isMember || isAdmin)
-    ? await (supabase.rpc as any)("get_league_predictions", { p_league_id: league.id })
+    ? await (supabase.rpc as any)("get_league_predictions", {
+        p_league_id: league.id,
+        p_competition_id: competitionId,
+      })
     : { data: [] }
 
   // Fetch members with profiles
@@ -158,7 +171,7 @@ export default async function LeaguePage({
         </div>
 
         {/* Prize */}
-        {league.prize_description && (
+        {league.prize_description?.trim() && (
           <div className="rounded-lg border border-yellow-600/20 bg-yellow-600/5 p-3 space-y-2">
             <div className="flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-yellow-500" />
@@ -224,6 +237,7 @@ export default async function LeaguePage({
               rows={predictionRows ?? []}
               currentUserId={user!.id}
               memberCount={membersList.length}
+              members={membersList}
             />
           </TabsContent>
         )}

@@ -17,15 +17,19 @@ export default async function LeaguesPage() {
     id: string; name: string; slug: string; description: string | null
     visibility: "public" | "private"; is_archived: boolean
     member_count?: number; your_rank?: number | null; your_points?: number | null
+    isOwner?: boolean
   }[] = []
 
   if (user) {
     const { data: memberships } = await supabase
       .from("league_members")
-      .select("league_id")
+      .select("league_id, role")
       .eq("user_id", user.id)
 
     const leagueIds = memberships?.map((m) => m.league_id) ?? []
+    const ownerLeagueIds = new Set(
+      (memberships ?? []).filter((m) => m.role === "owner").map((m) => m.league_id)
+    )
 
     if (leagueIds.length > 0) {
       const { data: leagues } = await supabase
@@ -48,6 +52,7 @@ export default async function LeaguesPage() {
         ...l,
         visibility: l.visibility as "public" | "private",
         member_count: countMap[l.id] ?? 0,
+        isOwner: ownerLeagueIds.has(l.id),
       }))
     }
   }
@@ -127,7 +132,7 @@ export default async function LeaguesPage() {
         <Tabs defaultValue="mine">
           <TabsList className="bg-secondary">
             <TabsTrigger value="mine">My Leagues ({myLeagues.length})</TabsTrigger>
-            <TabsTrigger value="discover">Discover</TabsTrigger>
+            <TabsTrigger value="public-leagues">Public Leagues</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-4 space-y-2">
@@ -139,11 +144,11 @@ export default async function LeaguesPage() {
                 </Button>
               </div>
             ) : (
-              myLeagues.map((league) => <LeagueCard key={league.id} league={league} />)
+              myLeagues.map((league) => <LeagueCard key={league.id} league={league} isOwner={league.isOwner} />)
             )}
           </TabsContent>
 
-          <TabsContent value="discover" className="mt-4 space-y-2">
+          <TabsContent value="public-leagues" className="mt-4 space-y-2">
             {publicLeaguesFormatted.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm">
                 No public leagues yet. Be the first to create one.

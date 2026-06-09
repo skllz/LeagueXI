@@ -61,57 +61,71 @@ export function LeagueOwnerMenu({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const run = async (fn: () => Promise<{ error?: string }>) => {
+  const handleArchive = async () => {
+    if (!confirm("Archive this league? It will no longer accept new members.")) return
     setLoading(true)
-    const result = await fn()
+    const result = await archiveLeague(leagueId)
     if (result.error) alert(result.error)
     else router.refresh()
     setLoading(false)
   }
 
+  const handleTransfer = async (memberId: string, username: string) => {
+    if (!confirm(`Transfer ownership to @${username}? You will become a regular member.`)) return
+    setLoading(true)
+    const result = await transferOwnership(leagueId, memberId)
+    setLoading(false)
+    if (result.error) {
+      alert(result.error)
+    } else {
+      const displayName = result.newOwnerUsername ?? username
+      setSuccessMsg(`Ownership transferred to @${displayName}`)
+      // Refresh after a short delay so the user sees the confirmation
+      setTimeout(() => router.refresh(), 1500)
+    }
+  }
+
   const otherMembers = members.filter((m) => m.user_id !== currentUserId)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="border-border" disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MoreHorizontal className="w-4 h-4" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-card border-border w-52">
-        {!isArchived && (
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => {
-              if (confirm("Archive this league? It will no longer accept new members.")) {
-                run(() => archiveLeague(leagueId))
-              }
-            }}
-          >
-            Archive league
-          </DropdownMenuItem>
-        )}
-        {otherMembers.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Transfer ownership to</div>
-            {otherMembers.map((m) => (
-              <DropdownMenuItem
-                key={m.user_id}
-                onClick={() => {
-                  if (confirm(`Transfer ownership to @${m.username}?`)) {
-                    run(() => transferOwnership(leagueId, m.user_id))
-                  }
-                }}
-              >
-                @{m.username}
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex flex-col items-end gap-1.5">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="border-border" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MoreHorizontal className="w-4 h-4" />}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-card border-border w-52">
+          {!isArchived && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={handleArchive}
+            >
+              Archive league
+            </DropdownMenuItem>
+          )}
+          {otherMembers.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Transfer ownership to</div>
+              {otherMembers.map((m) => (
+                <DropdownMenuItem
+                  key={m.user_id}
+                  onClick={() => handleTransfer(m.user_id, m.username)}
+                >
+                  @{m.username}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {successMsg && (
+        <p className="text-xs text-[var(--green)]">{successMsg}</p>
+      )}
+    </div>
   )
 }
 

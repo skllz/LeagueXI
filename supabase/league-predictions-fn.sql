@@ -1,33 +1,38 @@
--- Run this in the Supabase SQL editor
--- Returns league member predictions, enforcing pre-kickoff hiding
+-- Returns league member predictions, enforcing pre-kickoff hiding.
+-- Optionally filters to a specific competition when p_competition_id is provided.
+-- Run this in the Supabase SQL editor (replaces the previous version).
 
-CREATE OR REPLACE FUNCTION get_league_predictions(p_league_id uuid)
+CREATE OR REPLACE FUNCTION get_league_predictions(
+  p_league_id      uuid,
+  p_competition_id uuid DEFAULT NULL
+)
 RETURNS TABLE (
-  match_id        uuid,
-  kickoff_at      timestamptz,
-  status          text,
-  home_score      integer,
-  away_score      integer,
-  home_team_name  text,
-  home_team_short text,
+  match_id          uuid,
+  kickoff_at        timestamptz,
+  status            text,
+  home_score        integer,
+  away_score        integer,
+  home_team_name    text,
+  home_team_short   text,
   home_team_country text,
-  away_team_name  text,
-  away_team_short text,
+  away_team_name    text,
+  away_team_short   text,
   away_team_country text,
-  round           text,
-  user_id         uuid,
-  username        text,
-  avatar_url      text,
-  predicted_home  integer,
-  predicted_away  integer,
-  points          integer
+  round             text,
+  user_id           uuid,
+  username          text,
+  avatar_url        text,
+  predicted_home    integer,
+  predicted_away    integer,
+  points            integer
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_caller_id uuid := auth.uid();
+  v_caller_id      uuid := auth.uid();
+  v_competition_id uuid;
 BEGIN
   -- Must be a league member to see any predictions
   IF NOT EXISTS (
@@ -35,6 +40,20 @@ BEGIN
     WHERE league_id = p_league_id AND user_id = v_caller_id
   ) THEN
     RETURN;
+  END IF;
+
+  -- Resolve competition: use explicit param → league's competition_id → active competition
+  IF p_competition_id IS NOT NULL THEN
+    v_competition_id := p_competition_id;
+  ELSE
+    SELECT competition_id INTO v_competition_id
+    FROM leagues WHERE id = p_league_id;
+
+    IF v_competition_id IS NULL THEN
+      SELECT id INTO v_competition_id
+      FROM competitions WHERE is_active = true
+      LIMIT 1;
+    END IF;
   END IF;
 
   RETURN QUERY
@@ -58,12 +77,13 @@ BEGIN
     p.predicted_away_score,
     p.points
   FROM predictions p
-  JOIN league_members lm ON lm.user_id = p.user_id AND lm.league_id = p_league_id
-  JOIN matches m ON m.id = p.match_id
-  JOIN teams ht ON ht.id = m.home_team_id
-  JOIN teams awt ON awt.id = m.away_team_id
-  JOIN profiles pr ON pr.id = p.user_id
+  JOIN league_members lm  ON lm.user_id = p.user_id AND lm.league_id = p_league_id
+  JOIN matches m          ON m.id = p.match_id
+  JOIN teams ht           ON ht.id = m.home_team_id
+  JOIN teams awt          ON awt.id = m.away_team_id
+  JOIN profiles pr        ON pr.id = p.user_id
   WHERE pr.is_admin = false
+    AND (v_competition_id IS NULL OR m.competition_id = v_competition_id)
     AND (
       m.kickoff_at <= NOW()       -- after kickoff: all members' predictions visible
       OR p.user_id = v_caller_id  -- before kickoff: only own prediction
@@ -72,4 +92,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_league_predictions(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_league_predictions(uuid, uuid) TO authenticated;

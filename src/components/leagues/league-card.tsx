@@ -16,9 +16,10 @@ interface LeagueCardProps {
     your_points?: number | null
   }
   showJoin?: boolean
+  isOwner?: boolean
 }
 
-export function LeagueCard({ league, showJoin }: LeagueCardProps) {
+export function LeagueCard({ league, showJoin, isOwner }: LeagueCardProps) {
   return (
     <Link href={`/leagues/${league.slug}`}>
       <div className={cn(
@@ -29,6 +30,14 @@ export function LeagueCard({ league, showJoin }: LeagueCardProps) {
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold truncate">{league.name}</span>
+              {isOwner && (
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{ background: "#1a1a1a", border: "1px solid #333", color: "#888" }}
+                >
+                  Owner
+                </span>
+              )}
               {league.is_archived && (
                 <Badge variant="secondary" className="text-xs gap-1">
                   <Archive className="w-3 h-3" /> Archived

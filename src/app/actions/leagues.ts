@@ -253,7 +253,7 @@ export async function removeMember(
 export async function transferOwnership(
   leagueId: string,
   newOwnerId: string
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; newOwnerUsername?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
@@ -266,12 +266,38 @@ export async function transferOwnership(
 
   if (!league) return { error: "Not authorised" }
 
-  await supabase.from("leagues").update({ owner_id: newOwnerId }).eq("id", leagueId)
-  await supabase.from("league_members").update({ role: "owner" }).eq("league_id", leagueId).eq("user_id", newOwnerId)
-  await supabase.from("league_members").update({ role: "member" }).eq("league_id", leagueId).eq("user_id", user.id)
+  // Fetch new owner's username for the success message
+  const { data: newOwnerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", newOwnerId)
+    .single()
+
+  // Step 1: promote new owner in league_members (requires league_members_owner_update RLS policy)
+  const { error: e1 } = await supabase
+    .from("league_members")
+    .update({ role: "owner" })
+    .eq("league_id", leagueId)
+    .eq("user_id", newOwnerId)
+  if (e1) return { error: `Could not promote new owner: ${e1.message}` }
+
+  // Step 2: demote current owner in league_members
+  const { error: e2 } = await supabase
+    .from("league_members")
+    .update({ role: "member" })
+    .eq("league_id", leagueId)
+    .eq("user_id", user.id)
+  if (e2) return { error: `Could not update your role: ${e2.message}` }
+
+  // Step 3: update owner_id on the leagues table (requires leagues_owner_update RLS policy)
+  const { error: e3 } = await supabase
+    .from("leagues")
+    .update({ owner_id: newOwnerId })
+    .eq("id", leagueId)
+  if (e3) return { error: `Could not update league ownership: ${e3.message}` }
 
   revalidatePath("/leagues")
-  return {}
+  return { newOwnerUsername: newOwnerProfile?.username ?? undefined }
 }
 
 export async function updateLeague(
@@ -285,6 +311,11 @@ export async function updateLeague(
 ): Promise<{ error?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
+
+  // Sanitize prize_description: treat whitespace-only strings the same as null
+  if (typeof updates.prize_description === "string") {
+    updates.prize_description = updates.prize_description.trim() || null
+  }
 
   const { error } = await supabase
     .from("leagues")
