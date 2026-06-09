@@ -59,9 +59,12 @@ function buildGroups(
   const map = new Map<string, { kickoff: string; nodes: React.ReactNode[] }>()
 
   kicks.forEach((kickoff, i) => {
-    const key = useLocal
-      ? new Date(kickoff).toLocaleDateString()         // browser local timezone ← the fix
-      : new Date(kickoff).toLocaleDateString("en-CA")  // YYYY-MM-DD UTC, matches SSR path
+    // Always use "en-CA" locale (YYYY-MM-DD format) for the map key.
+    // On server (SSR/initial render, useLocal=false): produces UTC date string.
+    // On client after hydration (useLocal=true): produces local-timezone date string.
+    // Both produce the same YYYY-MM-DD format, so React keys stay stable across
+    // the SSR→hydration→re-render cycle and no unnecessary unmounts happen.
+    const key = new Date(kickoff).toLocaleDateString("en-CA")
 
     if (!map.has(key)) map.set(key, { kickoff, nodes: [] })
     map.get(key)!.nodes.push(children[i])

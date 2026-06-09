@@ -63,18 +63,22 @@ export function LeaguePredictions({
 }) {
   const now = new Date()
 
-  // Empty state: current user has made no predictions at all
-  const myRows = rows.filter((r) => r.user_id === currentUserId)
-  if (myRows.length === 0) {
+  // True empty: no rows at all (e.g. no one in the league has predicted yet)
+  if (rows.length === 0) {
     return (
       <div className="text-center py-12 space-y-3">
-        <p className="text-sm text-muted-foreground">You haven&apos;t made any predictions yet.</p>
+        <p className="text-sm text-muted-foreground">No predictions yet.</p>
         <Link href="/matches" className="text-sm text-[var(--green)] hover:underline block">
           Go to Matches to start predicting →
         </Link>
       </div>
     )
   }
+
+  // Current user hasn't predicted — show nudge but still render everyone else's
+  // post-kickoff predictions so late-joining members aren't left in the dark.
+  const myRows = rows.filter((r) => r.user_id === currentUserId)
+  const hasNoPredictions = myRows.length === 0
 
   // Group prediction rows by match
   const matchMap = new Map<string, MatchGroup>()
@@ -135,6 +139,16 @@ export function LeaguePredictions({
 
   return (
     <div className="space-y-5">
+
+      {/* Nudge — shown when current user has made no predictions yet */}
+      {hasNoPredictions && (
+        <div className="rounded-lg border border-border bg-secondary/20 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">You haven&apos;t predicted yet.</p>
+          <Link href="/matches" className="text-sm text-[var(--green)] hover:underline flex-shrink-0">
+            Predict now →
+          </Link>
+        </div>
+      )}
 
       {/* Info notice — shown when any upcoming matches exist */}
       {hasUpcoming && (
@@ -281,7 +295,6 @@ function CompletedMatchCard({
         {myPred && (
           <PredRow
             key={myPred.user_id}
-            userId={myPred.user_id}
             username={myPred.username}
             avatarUrl={myPred.avatar_url}
             predictedHome={myPred.predicted_home}
@@ -294,7 +307,6 @@ function CompletedMatchCard({
         {otherPreds.map((pred) => (
           <PredRow
             key={pred.user_id}
-            userId={pred.user_id}
             username={pred.username}
             avatarUrl={pred.avatar_url}
             predictedHome={pred.predicted_home}
@@ -307,7 +319,6 @@ function CompletedMatchCard({
         {!myPred && (
           <PredRow
             key={currentUserId + "-nopred"}
-            userId={currentUserId}
             username="You"
             avatarUrl={null}
             predictedHome={null}
@@ -320,7 +331,6 @@ function CompletedMatchCard({
         {noPredMembers.map((m) => (
           <PredRow
             key={m.user_id + "-nopred"}
-            userId={m.user_id}
             username={m.username}
             avatarUrl={m.avatar_url}
             predictedHome={null}
@@ -457,7 +467,6 @@ function PredRow({
   isCurrentUser,
   noPrediction,
 }: {
-  userId: string
   username: string
   avatarUrl: string | null
   predictedHome: number | null

@@ -81,12 +81,7 @@ export default async function LeaguePage({
     )
   }
 
-  // Fetch leaderboard
-  const { data: leaderboardRows } = await supabase.rpc("get_league_leaderboard", {
-    p_league_id: league.id,
-  })
-
-  // Resolve the competition for prediction filtering:
+  // Resolve the competition for prediction + leaderboard filtering:
   // use the league's own competition_id; if null, fall back to the active competition.
   const { data: activeComp } = await supabase
     .from("competitions")
@@ -96,13 +91,18 @@ export default async function LeaguePage({
 
   const competitionId = league.competition_id ?? activeComp?.id ?? null
 
+  // Fetch leaderboard — pass competition so scores match the Predictions tab
+  const { data: leaderboardRows } = await supabase.rpc("get_league_leaderboard", {
+    p_league_id: league.id,
+    p_competition_id: competitionId,
+  })
+
   // Fetch league predictions (members only).
   // p_caller_id is passed explicitly — auth.uid() is unreliable inside
   // SECURITY DEFINER functions when the JWT session context is reset at the
   // Postgres security boundary.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: predictionRows } = (isMember || isAdmin) && user
-    ? await (supabase.rpc as any)("get_league_predictions", {
+    ? await supabase.rpc("get_league_predictions", {
         p_league_id: league.id,
         p_caller_id: user.id,
         p_competition_id: competitionId,
@@ -274,6 +274,7 @@ export default async function LeaguePage({
                   {isOwner && member.user_id !== user?.id && (
                     <MemberRemoveButton
                       leagueId={league.id}
+                      leagueSlug={league.slug}
                       memberId={member.user_id}
                       username={member.username}
                     />

@@ -86,24 +86,22 @@ export async function createLeague(formData: FormData): Promise<{ error?: string
       visibility,
       prize_description: prizeDescription,
     })
-    .select("slug")
+    .select("id, slug")
     .single()
 
   if (insertError) return { error: insertError.message }
+  if (!league) return { error: "Failed to create league" }
 
-  // Fetch the inserted league id then add owner as member
-  const { data: insertedLeague } = await supabase
-    .from("leagues")
-    .select("id")
-    .eq("slug", league.slug)
-    .single()
+  // Add owner as member — if this fails, roll back the league row
+  const { error: memberError } = await supabase.from("league_members").insert({
+    league_id: league.id,
+    user_id: user.id,
+    role: "owner",
+  })
 
-  if (insertedLeague?.id) {
-    await supabase.from("league_members").insert({
-      league_id: insertedLeague.id,
-      user_id: user.id,
-      role: "owner",
-    })
+  if (memberError) {
+    await supabase.from("leagues").delete().eq("id", league.id)
+    return { error: "Failed to initialise league membership — please try again" }
   }
 
   revalidatePath("/leagues")
@@ -117,14 +115,12 @@ export async function joinLeagueByCode(
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
   const code = inviteCode.trim().toUpperCase()
-  const { data: league, error: lookupError } = await supabase
+  const { data: league } = await supabase
     .from("leagues")
-    .select("id, slug, is_archived, name")
+    .select("id, slug, is_archived")
     .eq("invite_code", code)
     .maybeSingle()
 
-  // Temporary debug log — remove once invite flow is confirmed working
-  console.log("[joinLeagueByCode] queried code:", code, "| found league:", league?.name ?? null, "| db error:", lookupError?.message ?? null)
 
   if (!league) return { error: "Invalid invite code" }
   if (league.is_archived) return { error: "This league is no longer accepting members" }
@@ -194,53 +190,67 @@ export async function leaveLeague(leagueId: string): Promise<{ error?: string }>
     .select("role")
     .eq("league_id", leagueId)
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
-  if (member?.role === "owner") return { error: "Transfer ownership before leaving" }
+  if (!member) return { error: "You are not a member of this league" }
+  if (member.role === "owner") return { error: "Transfer ownership before leaving" }
 
-  await supabase
+  const { error: deleteError } = await supabase
     .from("league_members")
     .delete()
     .eq("league_id", leagueId)
     .eq("user_id", user.id)
 
+  if (deleteError) return { error: deleteError.message }
+
   revalidatePath("/leagues")
   return {}
 }
 
-export async function archiveLeague(leagueId: string): Promise<{ error?: string }> {
+export async function archiveLeague(leagueId: string, leagueSlug: string): Promise<{ error?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("leagues")
     .update({ is_archived: true })
     .eq("id", leagueId)
     .eq("owner_id", user.id)
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+  if (!data) return { error: "Not authorised or league not found" }
+
   revalidatePath("/leagues")
+  revalidatePath(`/leagues/${leagueSlug}`)
   return {}
 }
 
-export async function unarchiveLeague(leagueId: string): Promise<{ error?: string }> {
+export async function unarchiveLeague(leagueId: string, leagueSlug: string): Promise<{ error?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("leagues")
     .update({ is_archived: false })
     .eq("id", leagueId)
     .eq("owner_id", user.id)
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+  if (!data) return { error: "Not authorised or league not found" }
+
   revalidatePath("/leagues")
+  revalidatePath(`/leagues/${leagueSlug}`)
   return {}
 }
 
 export async function removeMember(
   leagueId: string,
-  memberId: string
+  memberId: string,
+  leagueSlug: string
 ): Promise<{ error?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
@@ -255,19 +265,23 @@ export async function removeMember(
   if (!ownerCheck) return { error: "Not authorised" }
   if (memberId === user.id) return { error: "Cannot remove yourself" }
 
-  await supabase
+  const { error: deleteError } = await supabase
     .from("league_members")
     .delete()
     .eq("league_id", leagueId)
     .eq("user_id", memberId)
 
-  revalidatePath(`/leagues`)
+  if (deleteError) return { error: deleteError.message }
+
+  revalidatePath("/leagues")
+  revalidatePath(`/leagues/${leagueSlug}`)
   return {}
 }
 
 export async function transferOwnership(
   leagueId: string,
-  newOwnerId: string
+  newOwnerId: string,
+  leagueSlug: string
 ): Promise<{ error?: string; newOwnerUsername?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
@@ -282,8 +296,7 @@ export async function transferOwnership(
   // Single atomic SECURITY DEFINER function — handles all three DB steps and
   // authorises on either leagues.owner_id OR league_members.role = 'owner',
   // so it also recovers from any split-state caused by the old RLS approach.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: result, error: fnError } = await (supabase.rpc as any)(
+  const { data: result, error: fnError } = await supabase.rpc(
     "transfer_league_ownership",
     {
       p_league_id: leagueId,
@@ -296,11 +309,13 @@ export async function transferOwnership(
   if (result !== "ok") return { error: result ?? "Transfer failed" }
 
   revalidatePath("/leagues")
+  revalidatePath(`/leagues/${leagueSlug}`)
   return { newOwnerUsername: newOwnerProfile?.username ?? undefined }
 }
 
 export async function updateLeague(
   leagueId: string,
+  leagueSlug: string,
   updates: {
     name?: string
     description?: string | null
@@ -316,13 +331,18 @@ export async function updateLeague(
     updates.prize_description = updates.prize_description.trim() || null
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("leagues")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", leagueId)
     .eq("owner_id", user.id)
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+  if (!data) return { error: "Not authorised or league not found" }
+
   revalidatePath("/leagues")
+  revalidatePath(`/leagues/${leagueSlug}`)
   return {}
 }

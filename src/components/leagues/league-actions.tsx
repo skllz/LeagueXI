@@ -67,33 +67,42 @@ export function LeagueOwnerMenu({
   const handleArchive = async () => {
     if (!confirm("Archive this league? It will no longer accept new members.")) return
     setLoading(true)
-    const result = await archiveLeague(leagueId)
-    if (result.error) alert(result.error)
-    else router.refresh()
-    setLoading(false)
+    try {
+      const result = await archiveLeague(leagueId, leagueSlug)
+      if (result.error) alert(result.error)
+      else router.refresh()
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleUnarchive = async () => {
     if (!confirm("Unarchive this league? It will accept new members again.")) return
     setLoading(true)
-    const result = await unarchiveLeague(leagueId)
-    if (result.error) alert(result.error)
-    else router.refresh()
-    setLoading(false)
+    try {
+      const result = await unarchiveLeague(leagueId, leagueSlug)
+      if (result.error) alert(result.error)
+      else router.refresh()
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleTransfer = async (memberId: string, username: string) => {
     if (!confirm(`Transfer ownership to @${username}? You will become a regular member.`)) return
     setLoading(true)
-    const result = await transferOwnership(leagueId, memberId)
-    setLoading(false)
-    if (result.error) {
-      alert(result.error)
-    } else {
-      const displayName = result.newOwnerUsername ?? username
-      setSuccessMsg(`Ownership transferred to @${displayName}`)
-      // Refresh after a short delay so the user sees the confirmation
-      setTimeout(() => router.refresh(), 1500)
+    try {
+      const result = await transferOwnership(leagueId, memberId, leagueSlug)
+      if (result.error) {
+        alert(result.error)
+      } else {
+        const displayName = result.newOwnerUsername ?? username
+        setSuccessMsg(`Ownership transferred to @${displayName}`)
+        // Refresh after a short delay so the user sees the confirmation
+        setTimeout(() => router.refresh(), 1500)
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -145,10 +154,12 @@ export function LeagueOwnerMenu({
 
 export function MemberRemoveButton({
   leagueId,
+  leagueSlug,
   memberId,
   username,
 }: {
   leagueId: string
+  leagueSlug: string
   memberId: string
   username: string
 }) {
@@ -158,10 +169,13 @@ export function MemberRemoveButton({
   const handleRemove = async () => {
     if (!confirm(`Remove @${username} from this league?`)) return
     setLoading(true)
-    const result = await removeMember(leagueId, memberId)
-    if (result.error) alert(result.error)
-    else router.refresh()
-    setLoading(false)
+    try {
+      const result = await removeMember(leagueId, memberId, leagueSlug)
+      if (result.error) alert(result.error)
+      else router.refresh()
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

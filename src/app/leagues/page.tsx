@@ -59,14 +59,21 @@ export default async function LeaguesPage() {
 
   // Public leagues — visible to everyone, excluding leagues already joined
   const myLeagueIds = myLeagues.map((l) => l.id)
-  const { data: publicLeagues } = await supabase
+  let publicLeaguesQuery = supabase
     .from("leagues")
     .select("id, name, slug, description, visibility, is_archived")
     .eq("visibility", "public")
     .eq("is_archived", false)
-    .not("id", "in", myLeagueIds.length > 0 ? `(${myLeagueIds.join(",")})` : "(null)")
     .order("created_at", { ascending: false })
     .limit(50)
+
+  // Only apply the exclusion filter when the user has joined leagues —
+  // .not("id","in","(null)") evaluates as NOT IN (NULL) which returns no rows.
+  if (myLeagueIds.length > 0) {
+    publicLeaguesQuery = publicLeaguesQuery.not("id", "in", `(${myLeagueIds.join(",")})`)
+  }
+
+  const { data: publicLeagues } = await publicLeaguesQuery
 
   const publicIds = (publicLeagues ?? []).map((l) => l.id)
   const publicCountMap: Record<string, number> = {}

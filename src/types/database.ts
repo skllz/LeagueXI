@@ -283,7 +283,7 @@ export type Database = {
         }[]
       }
       get_league_leaderboard: {
-        Args: { p_league_id: string }
+        Args: { p_league_id: string; p_competition_id?: string | null }
         Returns: {
           user_id: string
           username: string
@@ -293,6 +293,49 @@ export type Database = {
           correct_results: number
           joined_at: string
         }[]
+      }
+      get_league_predictions: {
+        Args: {
+          p_league_id: string
+          p_caller_id: string
+          p_competition_id?: string | null
+        }
+        Returns: {
+          match_id: string
+          kickoff_at: string
+          status: string
+          home_score: number | null
+          away_score: number | null
+          home_team_name: string
+          home_team_short: string
+          home_team_country: string
+          away_team_name: string
+          away_team_short: string
+          away_team_country: string
+          round: string | null
+          user_id: string
+          username: string
+          avatar_url: string | null
+          predicted_home: number
+          predicted_away: number
+          points: number | null
+        }[]
+      }
+      transfer_league_ownership: {
+        Args: {
+          p_league_id: string
+          p_caller_id: string
+          p_new_owner_id: string
+        }
+        Returns: string
+      }
+      recalculate_match_predictions: {
+        Args: { p_match_id: string }
+        Returns: number
+      }
+      get_user_league_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
       }
     }
     Enums: {

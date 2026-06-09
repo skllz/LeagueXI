@@ -71,6 +71,10 @@ AS $$
       SELECT 1 FROM league_members
       WHERE league_id = p_league_id AND user_id = p_caller_id
     )
+    -- Anti-spoof guard: p_caller_id must match the authenticated JWT.
+    -- auth.uid() is checked but we degrade gracefully if it returns NULL
+    -- (e.g. called server-side where JWT context behaves differently).
+    AND (auth.uid() IS NULL OR auth.uid() = p_caller_id)
     -- Exclude admins — use IS NOT TRUE to correctly handle NULL values
     AND pr.is_admin IS NOT TRUE
     -- Competition filter: NULL means no filter (show all competitions)
