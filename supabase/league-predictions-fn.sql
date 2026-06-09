@@ -2,8 +2,18 @@
 -- Optionally filters to a specific competition when p_competition_id is provided.
 -- Run this in the Supabase SQL editor (replaces the previous version).
 
+-- Returns league member predictions, enforcing pre-kickoff hiding.
+-- p_caller_id is passed explicitly from the server — avoids auth.uid() inside
+-- SECURITY DEFINER where the JWT session context is not reliably available.
+-- Run this in the Supabase SQL editor (replaces all previous versions).
+
+-- Drop old overloads so there is no ambiguity for PostgREST.
+DROP FUNCTION IF EXISTS get_league_predictions(uuid);
+DROP FUNCTION IF EXISTS get_league_predictions(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION get_league_predictions(
   p_league_id      uuid,
+  p_caller_id      uuid,
   p_competition_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
@@ -31,18 +41,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_caller_id      uuid := auth.uid();
   v_competition_id uuid;
 BEGIN
-  -- Must be a league member to see any predictions
+  -- Caller must be a member of the league
   IF NOT EXISTS (
     SELECT 1 FROM league_members
-    WHERE league_id = p_league_id AND user_id = v_caller_id
+    WHERE league_id = p_league_id AND user_id = p_caller_id
   ) THEN
     RETURN;
   END IF;
 
-  -- Resolve competition: use explicit param → league's competition_id → active competition
+  -- Resolve competition: explicit param → league's competition_id → active competition
   IF p_competition_id IS NOT NULL THEN
     v_competition_id := p_competition_id;
   ELSE
@@ -85,11 +94,11 @@ BEGIN
   WHERE pr.is_admin = false
     AND (v_competition_id IS NULL OR m.competition_id = v_competition_id)
     AND (
-      m.kickoff_at <= NOW()       -- after kickoff: all members' predictions visible
-      OR p.user_id = v_caller_id  -- before kickoff: only own prediction
+      m.kickoff_at <= NOW()        -- after kickoff: all members' predictions visible
+      OR p.user_id = p_caller_id   -- before kickoff: only caller's own prediction
     )
   ORDER BY m.kickoff_at ASC, pr.username ASC;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_league_predictions(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_league_predictions(uuid, uuid, uuid) TO authenticated;

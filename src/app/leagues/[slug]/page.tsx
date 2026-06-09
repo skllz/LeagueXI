@@ -96,11 +96,15 @@ export default async function LeaguePage({
 
   const competitionId = league.competition_id ?? activeComp?.id ?? null
 
-  // Fetch league predictions (members only — RPC enforces this server-side too)
+  // Fetch league predictions (members only).
+  // p_caller_id is passed explicitly — auth.uid() is unreliable inside
+  // SECURITY DEFINER functions when the JWT session context is reset at the
+  // Postgres security boundary.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: predictionRows } = (isMember || isAdmin)
+  const { data: predictionRows } = (isMember || isAdmin) && user
     ? await (supabase.rpc as any)("get_league_predictions", {
         p_league_id: league.id,
+        p_caller_id: user.id,
         p_competition_id: competitionId,
       })
     : { data: [] }
