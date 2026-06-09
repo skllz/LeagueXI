@@ -223,6 +223,21 @@ export async function archiveLeague(leagueId: string): Promise<{ error?: string 
   return {}
 }
 
+export async function unarchiveLeague(leagueId: string): Promise<{ error?: string }> {
+  const { supabase, user, error: authError } = await getAuthenticatedUser()
+  if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
+
+  const { error } = await supabase
+    .from("leagues")
+    .update({ is_archived: false })
+    .eq("id", leagueId)
+    .eq("owner_id", user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath("/leagues")
+  return {}
+}
+
 export async function removeMember(
   leagueId: string,
   memberId: string

@@ -6,6 +6,7 @@ import {
   joinPublicLeague,
   leaveLeague,
   archiveLeague,
+  unarchiveLeague,
   removeMember,
   transferOwnership,
 } from "@/app/actions/leagues"
@@ -72,6 +73,15 @@ export function LeagueOwnerMenu({
     setLoading(false)
   }
 
+  const handleUnarchive = async () => {
+    if (!confirm("Unarchive this league? It will accept new members again.")) return
+    setLoading(true)
+    const result = await unarchiveLeague(leagueId)
+    if (result.error) alert(result.error)
+    else router.refresh()
+    setLoading(false)
+  }
+
   const handleTransfer = async (memberId: string, username: string) => {
     if (!confirm(`Transfer ownership to @${username}? You will become a regular member.`)) return
     setLoading(true)
@@ -98,12 +108,16 @@ export function LeagueOwnerMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-card border-border w-52">
-          {!isArchived && (
+          {!isArchived ? (
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={handleArchive}
             >
               Archive league
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={handleUnarchive}>
+              Unarchive league
             </DropdownMenuItem>
           )}
           {otherMembers.length > 0 && (

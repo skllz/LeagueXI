@@ -1,15 +1,14 @@
--- Returns league member predictions, enforcing pre-kickoff hiding.
--- Optionally filters to a specific competition when p_competition_id is provided.
--- Run this in the Supabase SQL editor (replaces the previous version).
-
--- Returns league member predictions, enforcing pre-kickoff hiding.
--- p_caller_id is passed explicitly from the server — avoids auth.uid() inside
--- SECURITY DEFINER where the JWT session context is not reliably available.
+-- Returns league member predictions, enforcing pre-kickoff privacy.
+-- p_caller_id is passed explicitly from the server component — auth.uid() is
+-- unreliable inside SECURITY DEFINER functions (SET search_path resets the JWT
+-- session context injected by PostgREST).
+--
 -- Run this in the Supabase SQL editor (replaces all previous versions).
 
--- Drop old overloads so there is no ambiguity for PostgREST.
+-- Drop all previous overloads to eliminate PostgREST ambiguity.
 DROP FUNCTION IF EXISTS get_league_predictions(uuid);
 DROP FUNCTION IF EXISTS get_league_predictions(uuid, uuid);
+DROP FUNCTION IF EXISTS get_league_predictions(uuid, uuid, uuid);
 
 CREATE OR REPLACE FUNCTION get_league_predictions(
   p_league_id      uuid,
@@ -36,36 +35,11 @@ RETURNS TABLE (
   predicted_away    integer,
   points            integer
 )
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
+STABLE
 SET search_path = public
 AS $$
-DECLARE
-  v_competition_id uuid;
-BEGIN
-  -- Caller must be a member of the league
-  IF NOT EXISTS (
-    SELECT 1 FROM league_members
-    WHERE league_id = p_league_id AND user_id = p_caller_id
-  ) THEN
-    RETURN;
-  END IF;
-
-  -- Resolve competition: explicit param → league's competition_id → active competition
-  IF p_competition_id IS NOT NULL THEN
-    v_competition_id := p_competition_id;
-  ELSE
-    SELECT competition_id INTO v_competition_id
-    FROM leagues WHERE id = p_league_id;
-
-    IF v_competition_id IS NULL THEN
-      SELECT id INTO v_competition_id
-      FROM competitions WHERE is_active = true
-      LIMIT 1;
-    END IF;
-  END IF;
-
-  RETURN QUERY
   SELECT
     m.id,
     m.kickoff_at,
@@ -86,19 +60,27 @@ BEGIN
     p.predicted_away_score,
     p.points
   FROM predictions p
-  JOIN league_members lm  ON lm.user_id = p.user_id AND lm.league_id = p_league_id
-  JOIN matches m          ON m.id = p.match_id
-  JOIN teams ht           ON ht.id = m.home_team_id
-  JOIN teams awt          ON awt.id = m.away_team_id
-  JOIN profiles pr        ON pr.id = p.user_id
-  WHERE pr.is_admin = false
-    AND (v_competition_id IS NULL OR m.competition_id = v_competition_id)
+  JOIN league_members lm ON lm.user_id = p.user_id AND lm.league_id = p_league_id
+  JOIN matches m         ON m.id = p.match_id
+  JOIN teams ht          ON ht.id = m.home_team_id
+  JOIN teams awt         ON awt.id = m.away_team_id
+  JOIN profiles pr       ON pr.id = p.user_id
+  WHERE
+    -- Caller must be a member of the league
+    EXISTS (
+      SELECT 1 FROM league_members
+      WHERE league_id = p_league_id AND user_id = p_caller_id
+    )
+    -- Exclude admins — use IS NOT TRUE to correctly handle NULL values
+    AND pr.is_admin IS NOT TRUE
+    -- Competition filter: NULL means no filter (show all competitions)
+    AND (p_competition_id IS NULL OR m.competition_id = p_competition_id)
+    -- Privacy: before kickoff only show the caller's own prediction
     AND (
-      m.kickoff_at <= NOW()        -- after kickoff: all members' predictions visible
-      OR p.user_id = p_caller_id   -- before kickoff: only caller's own prediction
+      m.kickoff_at <= NOW()
+      OR p.user_id = p_caller_id
     )
   ORDER BY m.kickoff_at ASC, pr.username ASC;
-END;
 $$;
 
 GRANT EXECUTE ON FUNCTION get_league_predictions(uuid, uuid, uuid) TO authenticated;
