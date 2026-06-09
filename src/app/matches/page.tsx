@@ -3,9 +3,9 @@ import { MatchCard } from "@/components/matches/match-card"
 import { RoundGroup } from "@/components/matches/round-group"
 import { MatchdayGroup } from "@/components/matches/matchday-group"
 import { StatusBanner, type BannerSection } from "@/components/matches/status-banner"
-import { ClientDate } from "@/components/matches/client-time"
 import { CalendarDays } from "lucide-react"
-import { groupMatchesByDay, getGroupStageMatchday } from "@/lib/utils/date"
+import { getGroupStageMatchday } from "@/lib/utils/date"
+import { LocalDayGroups } from "@/components/matches/local-day-groups"
 
 export const revalidate = 60
 
@@ -165,7 +165,8 @@ export default async function MatchesPage() {
 
   const knockoutMatches = matches.filter(m => m.round !== "Group Stage")
 
-  // Build per-matchday data
+  // Build per-matchday data (flat matches array — date grouping is done
+  // client-side by LocalDayGroups so the timezone is always the user's local tz)
   const matchdays = ([1, 2, 3] as const).map(md => {
     const mdMatches = groupStageMatches.filter(m => getGroupStageMatchday(m.kickoff_at) === md)
     return {
@@ -173,7 +174,7 @@ export default async function MatchesPage() {
       matchCount: mdMatches.length,
       firstKickoff: mdMatches[0]?.kickoff_at ?? "",
       lastKickoff: mdMatches[mdMatches.length - 1]?.kickoff_at ?? "",
-      byDay: groupMatchesByDay(mdMatches),
+      matches: mdMatches,
     }
   })
 
@@ -186,12 +187,10 @@ export default async function MatchesPage() {
 
   const availableMatchIds = new Set<string>()
 
-  for (const { md, firstKickoff, byDay } of matchdays) {
+  for (const { md, firstKickoff, matches: mdMatches } of matchdays) {
     const unlockMs = md === 1 ? 0 : unlockTime(firstKickoff)
     if (nowMs >= unlockMs) {
-      for (const { matches: dm } of byDay) {
-        for (const m of dm) availableMatchIds.add(m.id)
-      }
+      for (const m of mdMatches) availableMatchIds.add(m.id)
     }
   }
   for (const { matches: rm, firstKickoff } of knockoutGroups) {
@@ -237,24 +236,19 @@ export default async function MatchesPage() {
   // Render helpers
   // ---------------------------------------------------------------------------
 
-  function renderDayGroups(byDay: ReturnType<typeof groupMatchesByDay<MatchWithTeams>>) {
-    return byDay.map(({ day, matches: dayMatches }) => (
-      <div key={day} className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground/70 px-1 pt-2">
-          <ClientDate isoString={dayMatches[0].kickoff_at} />
-        </div>
-        <div className="space-y-2">
-          {dayMatches.map(match => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              prediction={predictionMap[match.id] ?? null}
-              isLoggedIn={!!user}
-            />
-          ))}
-        </div>
-      </div>
-    ))
+  function renderDayGroups(ms: MatchWithTeams[]) {
+    return (
+      <LocalDayGroups kicks={ms.map(m => m.kickoff_at)}>
+        {ms.map(match => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            prediction={predictionMap[match.id] ?? null}
+            isLoggedIn={!!user}
+          />
+        ))}
+      </LocalDayGroups>
+    )
   }
 
   return (
@@ -285,7 +279,7 @@ export default async function MatchesPage() {
             matchCount={groupStageMatches.length}
             defaultOpen={gsDefaultOpen}
           >
-            {matchdays.map(({ md, matchCount, firstKickoff, lastKickoff, byDay }) =>
+            {matchdays.map(({ md, matchCount, firstKickoff, lastKickoff, matches: mdMatches }) =>
               matchCount > 0 ? (
                 <MatchdayGroup
                   key={md}
@@ -296,7 +290,7 @@ export default async function MatchesPage() {
                   isAlwaysOpen={md === 1}
                   defaultOpen={md === activeMd}
                 >
-                  {renderDayGroups(byDay)}
+                  {renderDayGroups(mdMatches)}
                 </MatchdayGroup>
               ) : null
             )}
@@ -313,7 +307,7 @@ export default async function MatchesPage() {
             lastMatchKickoff={lastKickoff}
             defaultOpen={round === knockoutActiveRound?.round}
           >
-            {renderDayGroups(groupMatchesByDay(roundMatches))}
+            {renderDayGroups(roundMatches)}
           </RoundGroup>
         ))}
       </div>
