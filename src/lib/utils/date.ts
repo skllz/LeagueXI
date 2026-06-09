@@ -22,28 +22,26 @@ export function getGroupStageMatchday(kickoffAt: string): 1 | 2 | 3 {
 /**
  * Returns a human-readable string describing when a section will unlock.
  * Returns "" if already unlocked.
- *   ≤ 7 days → countdown:  "Opens in 2d 14h 32m"
- *   > 7 days → fixed date: "Opens Jun 18 at 3:00 PM"
+ *   ≤ 7 days → countdown:  "Opens in 2d 14h" (no minutes)
+ *   > 7 days → fixed date: "Opens Jun 18 · 3:00 PM"
  */
 export function formatUnlockInfo(unlockAt: Date, now: Date): string {
   const diffMs = unlockAt.getTime() - now.getTime()
   if (diffMs <= 0) return ""
 
   if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-    const totalMins = Math.floor(diffMs / 60_000)
-    const d = Math.floor(totalMins / (24 * 60))
-    const h = Math.floor((totalMins % (24 * 60)) / 60)
-    const m = totalMins % 60
-    const parts: string[] = []
-    if (d > 0) parts.push(`${d}d`)
-    if (h > 0 || d > 0) parts.push(`${h}h`)
-    parts.push(`${m}m`)
-    return `Opens in ${parts.join(" ")}`
+    const totalHours = Math.floor(diffMs / (60 * 60 * 1000))
+    const d = Math.floor(totalHours / 24)
+    const h = totalHours % 24
+    if (d > 0 && h > 0) return `Opens in ${d}d ${h}h`
+    if (d > 0) return `Opens in ${d}d`
+    if (h > 0) return `Opens in ${h}h`
+    return "Opens in < 1h"
   }
 
   const dateStr = unlockAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })
   const timeStr = unlockAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-  return `Opens ${dateStr} at ${timeStr}`
+  return `Opens ${dateStr} · ${timeStr}`
 }
 
 /**

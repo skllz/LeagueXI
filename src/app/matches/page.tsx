@@ -2,13 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 import { MatchCard } from "@/components/matches/match-card"
 import { RoundGroup } from "@/components/matches/round-group"
 import { MatchdayGroup } from "@/components/matches/matchday-group"
+import { StatusBanner, type BannerSection } from "@/components/matches/status-banner"
 import { ClientDate } from "@/components/matches/client-time"
 import { CalendarDays } from "lucide-react"
-import {
-  groupMatchesByDay,
-  getGroupStageMatchday,
-  MATCHDAY_CUTOFFS,
-} from "@/lib/utils/date"
+import { groupMatchesByDay, getGroupStageMatchday } from "@/lib/utils/date"
 
 export const revalidate = 60
 
@@ -83,12 +80,9 @@ function computeActiveMd(
   matchdays: { md: 1 | 2 | 3; firstKickoff: string; lastKickoff: string }[],
   nowMs: number
 ): 1 | 2 | 3 | null {
-  // The "active" matchday is the last one that is unlocked AND has upcoming matches.
-  // Iterating in ascending order and keeping the last match means later matchdays
-  // win when multiple are unlocked and have upcoming fixtures.
   let result: 1 | 2 | 3 | null = null
   for (const { md, firstKickoff, lastKickoff } of matchdays) {
-    const unlocked = md === 1 || nowMs >= unlockTime(firstKickoff)
+    const unlocked   = md === 1 || nowMs >= unlockTime(firstKickoff)
     const hasUpcoming = nowMs < new Date(lastKickoff).getTime()
     if (unlocked && hasUpcoming) result = md
   }
@@ -164,8 +158,6 @@ export default async function MatchesPage() {
     }
   }
 
-  const predictedCount = Object.keys(predictionMap).length
-
   // Split Group Stage from knockout matches
   const groupStageMatches = matches
     .filter(m => m.round === "Group Stage")
@@ -187,14 +179,59 @@ export default async function MatchesPage() {
 
   const knockoutGroups = groupKnockoutByRound(knockoutMatches)
 
-  // Compute default-open states (server-side snapshot)
+  // ── Predicted / available counters ──────────────────────────────────────
+  // "Available" = any match in a currently-unlocked section.
+  // Both values are server-side snapshots (revalidated every 60 s + on delete).
   const nowMs = Date.now()
+
+  const availableMatchIds = new Set<string>()
+
+  for (const { md, firstKickoff, byDay } of matchdays) {
+    const unlockMs = md === 1 ? 0 : unlockTime(firstKickoff)
+    if (nowMs >= unlockMs) {
+      for (const { matches: dm } of byDay) {
+        for (const m of dm) availableMatchIds.add(m.id)
+      }
+    }
+  }
+  for (const { matches: rm, firstKickoff } of knockoutGroups) {
+    if (firstKickoff && nowMs >= unlockTime(firstKickoff)) {
+      for (const m of rm) availableMatchIds.add(m.id)
+    }
+  }
+
+  const availableCount          = availableMatchIds.size
+  const predictedAvailableCount = user
+    ? [...availableMatchIds].filter(id => predictionMap[id] !== undefined).length
+    : 0
+
+  // ── Default-open states ──────────────────────────────────────────────────
   const activeMd = computeActiveMd(matchdays, nowMs)
   const gsDefaultOpen = activeMd !== null
 
   const knockoutActiveRound = knockoutGroups.find(({ firstKickoff, lastKickoff }) =>
     nowMs >= unlockTime(firstKickoff) && nowMs < new Date(lastKickoff).getTime()
   )
+
+  // ── Banner sections ──────────────────────────────────────────────────────
+  const bannerSections: BannerSection[] = [
+    ...matchdays
+      .filter(({ matchCount }) => matchCount > 0)
+      .map(({ md, matchCount, firstKickoff, lastKickoff }) => ({
+        label: `Matchday ${md}`,
+        matchCount,
+        firstKickoff,
+        lastKickoff,
+        isAlwaysOpen: md === 1,
+      })),
+    ...knockoutGroups.map(({ round, matches: rm, firstKickoff, lastKickoff }) => ({
+      label: round,
+      matchCount: rm.length,
+      firstKickoff,
+      lastKickoff,
+      isAlwaysOpen: false,
+    })),
+  ]
 
   // ---------------------------------------------------------------------------
   // Render helpers
@@ -203,7 +240,6 @@ export default async function MatchesPage() {
   function renderDayGroups(byDay: ReturnType<typeof groupMatchesByDay<MatchWithTeams>>) {
     return byDay.map(({ day, matches: dayMatches }) => (
       <div key={day} className="space-y-2">
-        {/* Date header — rendered client-side so it respects the user's local timezone */}
         <div className="text-xs font-medium text-muted-foreground/70 px-1 pt-2">
           <ClientDate isoString={dayMatches[0].kickoff_at} />
         </div>
@@ -223,18 +259,26 @@ export default async function MatchesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      {/* Page header */}
+      {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{competition.name}</h1>
-        {user && predictedCount > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {predictedCount} / {matches.length} predicted
+        {user && (
+          <p className="text-xs font-medium text-[var(--green)]">
+            {predictedAvailableCount} / {availableCount} predicted
           </p>
         )}
       </div>
 
       <div className="space-y-4">
-        {/* ── GROUP STAGE ──────────────────────────────────────────────── */}
+        {/* ── Status banner ── */}
+        <StatusBanner
+          sections={bannerSections}
+          predictedAvailableCount={predictedAvailableCount}
+          availableCount={availableCount}
+          isLoggedIn={!!user}
+        />
+
+        {/* ── GROUP STAGE ── */}
         {groupStageMatches.length > 0 && (
           <RoundGroup
             round="Group Stage"
@@ -259,7 +303,7 @@ export default async function MatchesPage() {
           </RoundGroup>
         )}
 
-        {/* ── KNOCKOUT ROUNDS ──────────────────────────────────────────── */}
+        {/* ── KNOCKOUT ROUNDS ── */}
         {knockoutGroups.map(({ round, matches: roundMatches, firstKickoff, lastKickoff }) => (
           <RoundGroup
             key={round}
