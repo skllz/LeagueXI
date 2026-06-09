@@ -1,7 +1,7 @@
 import { getFlagUrl } from "@/lib/utils/flags"
 import { FlagImage } from "./flag-image"
 import { isBeforeKickoff } from "@/lib/utils/date"
-import { ClientTime } from "./client-time"
+import { ClientTimeOnly } from "./client-time"
 import { PredictionInput } from "./prediction-input"
 import { cn } from "@/lib/utils"
 
@@ -59,7 +59,7 @@ export function MatchCard({ match, prediction, isLoggedIn }: MatchCardProps) {
             ? "Full Time"
             : isPostponed
             ? "Postponed"
-            : <ClientTime isoString={match.kickoff_at} />}
+            : <ClientTimeOnly isoString={match.kickoff_at} />}
         </span>
 
         {/* Points badge for completed matches */}

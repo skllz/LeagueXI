@@ -15,6 +15,18 @@ export function ClientTime({ isoString }: { isoString: string }) {
   return <span suppressHydrationWarning>{time || "—"}</span>
 }
 
+/** Time only — no date. Used on match cards where the date is already shown
+ *  in the section sub-header above the card group. */
+export function ClientTimeOnly({ isoString }: { isoString: string }) {
+  const [time, setTime] = useState<string>("")
+
+  useEffect(() => {
+    setTime(new Date(isoString).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))
+  }, [isoString])
+
+  return <span suppressHydrationWarning>{time || "—"}</span>
+}
+
 export function ClientDate({ isoString }: { isoString: string }) {
   const [date, setDate] = useState<string>("")
 
