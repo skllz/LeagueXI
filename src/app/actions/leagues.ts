@@ -272,44 +272,28 @@ export async function transferOwnership(
   const { supabase, user, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase || !user) return { error: authError ?? "Auth failed" }
 
-  const { data: league } = await supabase
-    .from("leagues")
-    .select("id")
-    .eq("id", leagueId)
-    .eq("owner_id", user.id)
-    .single()
-
-  if (!league) return { error: "Not authorised" }
-
-  // Fetch new owner's username for the success message
+  // Fetch new owner's username for the success message (before the transfer)
   const { data: newOwnerProfile } = await supabase
     .from("profiles")
     .select("username")
     .eq("id", newOwnerId)
     .single()
 
-  // Step 1: promote new owner in league_members (requires league_members_owner_update RLS policy)
-  const { error: e1 } = await supabase
-    .from("league_members")
-    .update({ role: "owner" })
-    .eq("league_id", leagueId)
-    .eq("user_id", newOwnerId)
-  if (e1) return { error: `Could not promote new owner: ${e1.message}` }
+  // Single atomic SECURITY DEFINER function — handles all three DB steps and
+  // authorises on either leagues.owner_id OR league_members.role = 'owner',
+  // so it also recovers from any split-state caused by the old RLS approach.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: result, error: fnError } = await (supabase.rpc as any)(
+    "transfer_league_ownership",
+    {
+      p_league_id: leagueId,
+      p_caller_id: user.id,
+      p_new_owner_id: newOwnerId,
+    }
+  )
 
-  // Step 2: demote current owner in league_members
-  const { error: e2 } = await supabase
-    .from("league_members")
-    .update({ role: "member" })
-    .eq("league_id", leagueId)
-    .eq("user_id", user.id)
-  if (e2) return { error: `Could not update your role: ${e2.message}` }
-
-  // Step 3: update owner_id on the leagues table (requires leagues_owner_update RLS policy)
-  const { error: e3 } = await supabase
-    .from("leagues")
-    .update({ owner_id: newOwnerId })
-    .eq("id", leagueId)
-  if (e3) return { error: `Could not update league ownership: ${e3.message}` }
+  if (fnError) return { error: fnError.message }
+  if (result !== "ok") return { error: result ?? "Transfer failed" }
 
   revalidatePath("/leagues")
   return { newOwnerUsername: newOwnerProfile?.username ?? undefined }
