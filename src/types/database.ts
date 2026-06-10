@@ -321,6 +321,10 @@ export type Database = {
           points: number | null
         }[]
       }
+      get_league_by_invite_code: {
+        Args: { p_invite_code: string }
+        Returns: { id: string; slug: string; is_archived: boolean }[]
+      }
       get_user_rank: {
         Args: { p_user_id: string; p_competition_id?: string | null }
         Returns: {
