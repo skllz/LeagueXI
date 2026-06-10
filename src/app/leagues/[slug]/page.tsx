@@ -29,11 +29,8 @@ export default async function LeaguePage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: league } = await supabase
-    .from("leagues")
-    .select("id, name, slug, description, visibility, prize_description, is_archived, owner_id, competition_id")
-    .eq("slug", slug)
-    .single()
+  const { data: rows } = await supabase.rpc("get_league_for_page", { p_slug: slug })
+  const league = rows?.[0] ?? null
 
   if (!league) notFound()
 

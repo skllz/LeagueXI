@@ -321,6 +321,20 @@ export type Database = {
           points: number | null
         }[]
       }
+      get_league_for_page: {
+        Args: { p_slug: string }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          visibility: "public" | "private"
+          prize_description: string | null
+          is_archived: boolean
+          owner_id: string
+          competition_id: string | null
+        }[]
+      }
       get_league_by_invite_code: {
         Args: { p_invite_code: string }
         Returns: { id: string; slug: string; is_archived: boolean }[]
