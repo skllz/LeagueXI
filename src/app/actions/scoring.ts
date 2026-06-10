@@ -25,80 +25,93 @@ export async function updateMatchResult(
   homeScore: number,
   awayScore: number
 ): Promise<{ error?: string; success?: boolean }> {
-  const { supabase, error: authError } = await requireAdmin()
-  if (authError || !supabase) return { error: authError ?? "Auth failed" }
+  try {
+    const { supabase, error: authError } = await requireAdmin()
+    if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
-  if (
-    !Number.isInteger(homeScore) || !Number.isInteger(awayScore) ||
-    homeScore < 0 || awayScore < 0 ||
-    homeScore > 20 || awayScore > 20
-  ) {
-    return { error: "Invalid score (0–20 per team)" }
+    if (
+      !Number.isInteger(homeScore) || !Number.isInteger(awayScore) ||
+      homeScore < 0 || awayScore < 0 ||
+      homeScore > 20 || awayScore > 20
+    ) {
+      return { error: "Invalid score (0–20 per team)" }
+    }
+
+    // Chain .select() so we can detect RLS-silent failures:
+    // if RLS blocks the UPDATE, Supabase returns no error but also no data.
+    const { data: updatedMatch, error: matchError } = await supabase
+      .from("matches")
+      .update({ home_score: homeScore, away_score: awayScore, status: "completed" })
+      .eq("id", matchId)
+      .select("id, home_score, away_score")
+      .single()
+
+    if (matchError) return { error: matchError.message }
+    if (!updatedMatch) return { error: "Match update was blocked — verify admin RLS policy on matches table" }
+
+    const calcError = await recalculatePredictions(supabase, matchId, homeScore, awayScore)
+    if (calcError) return { error: calcError }
+
+    revalidatePath("/matches")
+    revalidatePath("/leaderboard")
+    revalidatePath("/admin/results")
+
+    return { success: true }
+  } catch (e) {
+    if (e != null && typeof e === "object" && "digest" in e) throw e
+    return { error: "Something went wrong. Please try again." }
   }
-
-  // Update match result and status.
-  // Chain .select() so we can detect RLS-silent failures:
-  // if RLS blocks the UPDATE, Supabase returns no error but also no data.
-  const { data: updatedMatch, error: matchError } = await supabase
-    .from("matches")
-    .update({ home_score: homeScore, away_score: awayScore, status: "completed" })
-    .eq("id", matchId)
-    .select("id, home_score, away_score")
-    .single()
-
-  if (matchError) return { error: matchError.message }
-  if (!updatedMatch) return { error: "Match update was blocked — verify admin RLS policy on matches table" }
-
-  // Recalculate all predictions for this match
-  const calcError = await recalculatePredictions(supabase, matchId, homeScore, awayScore)
-  if (calcError) return { error: calcError }
-
-  revalidatePath("/matches")
-  revalidatePath("/leaderboard")
-  revalidatePath("/admin/results")
-
-  return { success: true }
 }
 
 export async function setMatchLive(matchId: string): Promise<{ error?: string; success?: boolean }> {
-  const { supabase, error: authError } = await requireAdmin()
-  if (authError || !supabase) return { error: authError ?? "Auth failed" }
+  try {
+    const { supabase, error: authError } = await requireAdmin()
+    if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
-  const { data: updatedMatch, error } = await supabase
-    .from("matches")
-    .update({ status: "live" })
-    .eq("id", matchId)
-    .select("id")
-    .single()
+    const { data: updatedMatch, error } = await supabase
+      .from("matches")
+      .update({ status: "live" })
+      .eq("id", matchId)
+      .select("id")
+      .single()
 
-  if (error) return { error: error.message }
-  if (!updatedMatch) return { error: "Match update blocked — check admin RLS policy on matches table" }
+    if (error) return { error: error.message }
+    if (!updatedMatch) return { error: "Match update blocked — check admin RLS policy on matches table" }
 
-  revalidatePath("/matches")
-  revalidatePath("/admin/results")
-  return { success: true }
+    revalidatePath("/matches")
+    revalidatePath("/admin/results")
+    return { success: true }
+  } catch (e) {
+    if (e != null && typeof e === "object" && "digest" in e) throw e
+    return { error: "Something went wrong. Please try again." }
+  }
 }
 
 export async function recalculateMatch(matchId: string): Promise<{ error?: string; success?: boolean }> {
-  const { supabase, error: authError } = await requireAdmin()
-  if (authError || !supabase) return { error: authError ?? "Auth failed" }
+  try {
+    const { supabase, error: authError } = await requireAdmin()
+    if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
-  const { data: match } = await supabase
-    .from("matches")
-    .select("home_score, away_score, status")
-    .eq("id", matchId)
-    .single()
+    const { data: match } = await supabase
+      .from("matches")
+      .select("home_score, away_score, status")
+      .eq("id", matchId)
+      .single()
 
-  if (!match) return { error: "Match not found" }
-  if (match.status !== "completed") return { error: "Match is not completed" }
-  if (match.home_score === null || match.away_score === null) return { error: "Match has no score" }
+    if (!match) return { error: "Match not found" }
+    if (match.status !== "completed") return { error: "Match is not completed" }
+    if (match.home_score === null || match.away_score === null) return { error: "Match has no score" }
 
-  const calcError = await recalculatePredictions(supabase, matchId, match.home_score, match.away_score)
-  if (calcError) return { error: calcError }
+    const calcError = await recalculatePredictions(supabase, matchId, match.home_score, match.away_score)
+    if (calcError) return { error: calcError }
 
-  revalidatePath("/matches")
-  revalidatePath("/leaderboard")
-  return { success: true }
+    revalidatePath("/matches")
+    revalidatePath("/leaderboard")
+    return { success: true }
+  } catch (e) {
+    if (e != null && typeof e === "object" && "digest" in e) throw e
+    return { error: "Something went wrong. Please try again." }
+  }
 }
 
 // Returns an error string on failure, null on success.

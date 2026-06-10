@@ -1,0 +1,13 @@
+-- ⚠️  SUPERSEDED — DO NOT RUN THIS FILE ⚠️
+--
+-- This file has been replaced by fix-pending-security.sql which is the
+-- canonical fix for C1, C2(a), C2(b), H2 plus the required RPCs.
+--
+-- Differences that make this file dangerous to run:
+--   * Creates `lookup_league_by_invite_code` — the app calls
+--     `get_league_by_invite_code` (different name); running this would
+--     create a dead function and leave the correct one missing.
+--   * Does not include the H2 archived-league-join fix.
+--   * Does not include get_league_for_page (required for private league pages).
+--
+-- Run fix-pending-security.sql instead.
