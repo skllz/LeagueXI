@@ -132,7 +132,7 @@ export function PredictionInput({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSignIn(true)}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+              className="w-11 h-11 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
               aria-label="Sign in to predict"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -140,7 +140,7 @@ export function PredictionInput({
             <span className="text-muted-foreground text-lg font-bold w-9 sm:w-10 text-center">–</span>
             <button
               onClick={() => setShowSignIn(true)}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+              className="w-11 h-11 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
               aria-label="Sign in to predict"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -163,15 +163,15 @@ export function PredictionInput({
         />
 
         {/* Centre indicator */}
-        <div className="flex items-center justify-center w-7">
+        <div className="flex items-center justify-center w-7" aria-live="polite" aria-atomic="true">
           {saveState === "saving" && (
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-label="Saving" />
           )}
           {saveState === "saved" && (
-            <CheckCircle2 className="w-5 h-5 text-[var(--green)]" />
+            <CheckCircle2 className="w-5 h-5 text-[var(--green)]" aria-label="Saved" />
           )}
           {saveState === "idle" && (
-            <span className="text-muted-foreground font-medium text-lg">-</span>
+            <span className="text-muted-foreground font-medium text-lg" aria-hidden="true">-</span>
           )}
           {saveState === "error" && (
             <span className="text-destructive text-[10px] text-center leading-tight max-w-[60px]">
@@ -220,26 +220,26 @@ function ScoreControl({
     <div className="flex flex-col items-center gap-1">
       <button
         onClick={onIncrement}
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary hover:bg-secondary/80 active:scale-95 transition-all flex items-center justify-center text-foreground"
+        className="w-11 h-11 rounded-xl bg-secondary hover:bg-secondary/80 active:scale-95 transition-all flex items-center justify-center text-foreground"
         aria-label="Increase score"
       >
-        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <Plus className="w-4 h-4" />
       </button>
-      <span className="text-xl sm:text-2xl font-bold tabular-nums w-9 sm:w-10 text-center">
+      <span className="text-xl sm:text-2xl font-bold tabular-nums w-11 text-center">
         {value}
       </span>
       <button
         onClick={onDecrement}
         disabled={value === 0}
         className={cn(
-          "w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary transition-all flex items-center justify-center",
+          "w-11 h-11 rounded-xl bg-secondary transition-all flex items-center justify-center",
           value === 0
             ? "opacity-30 cursor-not-allowed"
             : "hover:bg-secondary/80 active:scale-95"
         )}
         aria-label="Decrease score"
       >
-        <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <Minus className="w-4 h-4" />
       </button>
     </div>
   )

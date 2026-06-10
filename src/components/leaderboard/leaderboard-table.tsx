@@ -30,11 +30,10 @@ export function LeaderboardTable({ rows, currentUserId, pinnedRow }: Leaderboard
           No scores yet. Leaderboard updates after matches are completed.
         </p>
         <p className="text-muted-foreground text-sm">
-          The tournament kicks off June 12.{" "}
           <Link href="/matches" className="text-[var(--green)] hover:underline">
-            Make your predictions now
+            Make your predictions
           </Link>{" "}
-          and climb the table.
+          — the leaderboard updates after each match is completed.
         </p>
       </div>
     )
@@ -55,7 +54,7 @@ export function LeaderboardTable({ rows, currentUserId, pinnedRow }: Leaderboard
     <div className="space-y-3">
       <div className="rounded-xl border border-border overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
+        <div className="grid grid-cols-[2.5rem_1fr_3.5rem] sm:grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
           <div className="text-xs font-semibold text-muted-foreground text-center">#</div>
           <div className="text-xs font-semibold text-muted-foreground">Player</div>
           <div className="text-xs font-semibold text-muted-foreground text-center">Pts</div>
@@ -96,11 +95,10 @@ export function LeaderboardTable({ rows, currentUserId, pinnedRow }: Leaderboard
       {/* Context message when no points yet */}
       {tournamentNotStarted && (
         <p className="text-center text-sm text-muted-foreground px-2">
-          The tournament kicks off June 12.{" "}
+          No scores yet — the first results update the leaderboard.{" "}
           <Link href="/matches" className="text-[var(--green)] hover:underline font-medium">
-            Make your predictions now
-          </Link>{" "}
-          and climb the table.
+            Make your predictions now.
+          </Link>
         </p>
       )}
 
@@ -132,7 +130,7 @@ function TableRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 items-center border-b border-border last:border-0",
+        "grid grid-cols-[2.5rem_1fr_3.5rem] sm:grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 items-center border-b border-border last:border-0",
         isCurrentUser && "bg-[var(--green-dim)]/20",
         isPinned && "bg-[var(--green-dim)]/10"
       )}

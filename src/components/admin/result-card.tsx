@@ -108,7 +108,7 @@ export function ResultCard({ match }: ResultCardProps) {
           <input
             type="number"
             min={0}
-            max={30}
+            max={20}
             value={homeScore}
             onChange={(e) => setHomeScore(Math.max(0, parseInt(e.target.value) || 0))}
             className="w-12 h-10 text-center text-lg font-bold rounded-lg bg-secondary border border-border focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
@@ -117,7 +117,7 @@ export function ResultCard({ match }: ResultCardProps) {
           <input
             type="number"
             min={0}
-            max={30}
+            max={20}
             value={awayScore}
             onChange={(e) => setAwayScore(Math.max(0, parseInt(e.target.value) || 0))}
             className="w-12 h-10 text-center text-lg font-bold rounded-lg bg-secondary border border-border focus:outline-none focus:ring-2 focus:ring-[var(--green)]"

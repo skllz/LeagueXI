@@ -68,26 +68,25 @@ export default async function ProfilePage() {
 
 async function ProfileStats({ userId }: { userId: string }) {
   const supabase = await createClient()
-  const { data: leaderboard } = await supabase.rpc("get_leaderboard")
-  const myRow = leaderboard?.find((r) => r.user_id === userId)
-  const myRank = leaderboard ? leaderboard.findIndex((r) => r.user_id === userId) + 1 : 0
+  const { data } = await supabase.rpc("get_user_rank", { p_user_id: userId })
+  const stats = data?.[0] ?? null
 
   return (
     <div className="grid grid-cols-3 gap-3">
       <StatCard
         icon={<Trophy className="w-4 h-4 text-[var(--green)]" />}
         label="Points"
-        value={myRow?.total_points ?? 0}
+        value={stats?.total_points ?? 0}
       />
       <StatCard
         icon={<span className="text-sm">⭐</span>}
         label="Exact scores"
-        value={myRow?.exact_scores ?? 0}
+        value={stats?.exact_scores ?? 0}
       />
       <StatCard
         icon={<span className="text-sm">✓</span>}
         label="Global rank"
-        value={myRank > 0 ? `#${myRank}` : "—"}
+        value={stats?.rank ? `#${stats.rank}` : "—"}
       />
     </div>
   )

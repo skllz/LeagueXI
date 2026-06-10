@@ -321,6 +321,15 @@ export type Database = {
           points: number | null
         }[]
       }
+      get_user_rank: {
+        Args: { p_user_id: string; p_competition_id?: string | null }
+        Returns: {
+          total_points: number
+          exact_scores: number
+          correct_results: number
+          rank: number
+        }[]
+      }
       transfer_league_ownership: {
         Args: {
           p_league_id: string

@@ -49,7 +49,9 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users who haven't completed onboarding
+  // Redirect authenticated users who haven't completed onboarding.
+  // Skip the DB query if the x-onboarded cookie matches the current user ID —
+  // this halves the number of Supabase queries on every page load after onboarding.
   if (
     user &&
     !request.nextUrl.pathname.startsWith("/onboarding") &&
@@ -58,14 +60,25 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/_next") &&
     !request.nextUrl.pathname.startsWith("/api")
   ) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .maybeSingle()
+    const onboardedCookie = request.cookies.get("x-onboarded")
+    if (onboardedCookie?.value !== user.id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .maybeSingle()
 
-    if (!profile?.username) {
-      return NextResponse.redirect(new URL("/onboarding", request.url))
+      if (!profile?.username) {
+        return NextResponse.redirect(new URL("/onboarding", request.url))
+      }
+
+      // Cache the onboarding check for 7 days, keyed to this user's ID
+      supabaseResponse.cookies.set("x-onboarded", user.id, {
+        maxAge: 60 * 60 * 24 * 7,
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+      })
     }
   }
 

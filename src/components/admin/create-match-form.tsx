@@ -64,7 +64,7 @@ export function CreateMatchForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Kickoff (local time)</Label>
+          <Label>Kickoff <span className="text-muted-foreground font-normal text-xs">(your local time — auto-converted to UTC)</span></Label>
           <input
             type="datetime-local"
             name="kickoff_at"
