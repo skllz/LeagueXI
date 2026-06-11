@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { LoginForm } from "@/components/auth/login-form"
 import { Trophy } from "lucide-react"
 
@@ -14,7 +15,10 @@ export default function LoginPage() {
             Predict scores. Compete with friends. Climb the table.
           </p>
         </div>
-        <LoginForm />
+        {/* Suspense required: LoginForm reads useSearchParams() */}
+        <Suspense>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   )

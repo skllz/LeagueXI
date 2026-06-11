@@ -1,8 +1,16 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { OnboardingForm } from "@/components/auth/onboarding-form"
+import { safeInternalPath } from "@/lib/utils"
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
+  const { next: rawNext } = await searchParams
+  const next = safeInternalPath(rawNext)
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -17,7 +25,7 @@ export default async function OnboardingPage() {
     .maybeSingle()
 
   if (profile?.username) {
-    redirect("/matches")
+    redirect(next ?? "/matches")
   }
 
   // Do not pre-fill from full_name or email — both can expose PII.
@@ -34,7 +42,7 @@ export default async function OnboardingPage() {
             You can change it later.
           </p>
         </div>
-        <OnboardingForm userId={user.id} suggestedUsername={suggestedUsername} />
+        <OnboardingForm userId={user.id} suggestedUsername={suggestedUsername} next={next} />
       </div>
     </div>
   )

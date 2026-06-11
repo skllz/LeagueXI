@@ -17,9 +17,13 @@ const RESERVED_USERNAMES = new Set([
 export function OnboardingForm({
   userId,
   suggestedUsername,
+  next,
 }: {
   userId: string
   suggestedUsername: string
+  // Validated by the onboarding page (safeInternalPath) — resumes an
+  // interrupted journey such as a league invite link
+  next?: string | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -66,7 +70,7 @@ export function OnboardingForm({
       return
     }
 
-    window.location.href = "/matches"
+    window.location.href = next ?? "/matches"
   }
 
   const handleChange = (val: string) => {

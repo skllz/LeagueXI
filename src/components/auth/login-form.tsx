@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { safeInternalPath } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,7 +19,12 @@ export function LoginForm() {
   const supabase = createClient()
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
-  const callbackUrl = `${siteUrl}/auth/callback`
+  // Where to send the user after auth (e.g. back to a league invite link).
+  // Absent for normal logins — every flow below falls back to today's behavior.
+  const next = safeInternalPath(useSearchParams().get("next"))
+  const callbackUrl = next
+    ? `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${siteUrl}/auth/callback`
 
   const signInWithGoogle = async () => {
     setLoading(true)
@@ -85,7 +92,12 @@ export function LoginForm() {
           .maybeSingle()
 
         if (!profile?.username) {
-          window.location.href = "/onboarding"
+          // Onboarding finishes the journey — hand it the return path
+          window.location.href = next
+            ? `/onboarding?next=${encodeURIComponent(next)}`
+            : "/onboarding"
+        } else if (next) {
+          window.location.href = next
         } else if (profile.is_admin) {
           window.location.href = "/admin"
         } else {

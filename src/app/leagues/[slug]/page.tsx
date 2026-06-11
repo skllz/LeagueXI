@@ -26,6 +26,10 @@ export default async function LeaguePage({
 }) {
   const { slug } = await params
   const { join: joinCode } = await searchParams
+  // Send anonymous visitors through login and back to this exact invite URL
+  const loginHref = `/auth/login?next=${encodeURIComponent(
+    `/leagues/${slug}${joinCode ? `?join=${joinCode}` : ""}`
+  )}`
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -82,7 +86,7 @@ export default async function LeaguePage({
           <JoinByCodeForm defaultCode={joinCode} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            <a href="/auth/login" className="underline">Sign in</a> to join.
+            <a href={loginHref} className="underline">Sign in</a> to join.
           </p>
         )}
       </div>
@@ -206,6 +210,11 @@ export default async function LeaguePage({
         )}
 
         {/* Join / Leave actions */}
+        {!user && !league.is_archived && (
+          <p className="text-sm text-muted-foreground">
+            <a href={loginHref} className="underline">Sign in</a> to join this league.
+          </p>
+        )}
         {user && !isMember && !isAdmin && !league.is_archived && league.visibility === "public" && (
           <JoinPublicLeagueButton leagueId={league.id} />
         )}
