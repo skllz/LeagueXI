@@ -49,18 +49,22 @@ export function MatchCard({ match, prediction, isLoggedIn }: MatchCardProps) {
     >
       {/* Top row: time / status */}
       <div className="flex items-center justify-between mb-4">
-        <span className={cn(
-          "text-xs font-medium",
-          isLive ? "text-[var(--green)]" : "text-muted-foreground"
-        )}>
-          {isLive
-            ? "Live"
-            : isCompleted
-            ? "Full Time"
-            : isPostponed
-            ? "Postponed"
-            : <ClientTimeOnly isoString={match.kickoff_at} />}
-        </span>
+        {isCompleted ? (
+          <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-foreground">
+            Full Time
+          </span>
+        ) : (
+          <span className={cn(
+            "text-xs font-medium",
+            isLive ? "text-[var(--green)]" : "text-muted-foreground"
+          )}>
+            {isLive
+              ? "Live"
+              : isPostponed
+              ? "Postponed"
+              : <ClientTimeOnly isoString={match.kickoff_at} />}
+          </span>
+        )}
 
         {/* Points badge for completed matches */}
         {isCompleted && prediction?.points !== null && prediction?.points !== undefined && (
