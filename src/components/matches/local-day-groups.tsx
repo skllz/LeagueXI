@@ -60,6 +60,21 @@ export function LocalDayGroups({ kicks, children }: LocalDayGroupsProps) {
     activeKey = groups[groups.length - 1].key
   }
 
+  // Display order: the matches page is for taking action (predicting), so days
+  // that still have an upcoming match float to the top (soonest first) and
+  // fully-played days sink to the bottom (most recent first). Before mount we
+  // keep the server's chronological order so SSR and the first client render
+  // produce identical markup; the reorder applies on the post-hydration render.
+  const orderedGroups = useLocal
+    ? [...groups].sort((a, b) => {
+        const aUpcoming = a.kickoffs.some(k => new Date(k).getTime() > nowMs)
+        const bUpcoming = b.kickoffs.some(k => new Date(k).getTime() > nowMs)
+        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
+        if (aUpcoming) return a.key.localeCompare(b.key) // upcoming/active: soonest first
+        return b.key.localeCompare(a.key)                // completed: most recent first
+      })
+    : groups
+
   function isOpen(key: string): boolean {
     // Before hydration, render everything open to match the server output.
     if (!useLocal) return true
@@ -73,7 +88,7 @@ export function LocalDayGroups({ kicks, children }: LocalDayGroupsProps) {
 
   return (
     <div className="space-y-3">
-      {groups.map(({ key, kickoff, nodes }) => {
+      {orderedGroups.map(({ key, kickoff, nodes }) => {
         const open = isOpen(key)
         return (
           <div key={key} className="space-y-2">
