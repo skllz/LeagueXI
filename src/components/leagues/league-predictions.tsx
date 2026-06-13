@@ -134,10 +134,16 @@ export function LeaguePredictions({
     dateMap.get(localDate)!.matches.push(match)
   }
 
-  // Date groups chronologically (oldest first)
-  const sortedGroups = Array.from(dateMap.entries()).sort(([, a], [, b]) =>
-    a.sortKey.localeCompare(b.sortKey)
-  )
+  // Order date groups for a review surface: days that already have results come
+  // first (most recent day on top, so the freshest scores — and the card we
+  // auto-expand — sit at the top), then all-upcoming days (soonest first) below.
+  const sortedGroups = Array.from(dateMap.entries()).sort(([keyA, a], [keyB, b]) => {
+    const aHasResult = a.matches.some((m) => new Date(m.kickoff_at) <= now)
+    const bHasResult = b.matches.some((m) => new Date(m.kickoff_at) <= now)
+    if (aHasResult !== bHasResult) return aHasResult ? -1 : 1
+    if (aHasResult) return keyB.localeCompare(keyA) // result days: most recent first
+    return keyA.localeCompare(keyB)                 // upcoming days: soonest first
+  })
 
   // Within each date group: past-kickoff/live first (most recent first), upcoming after (soonest first)
   for (const [, group] of sortedGroups) {
