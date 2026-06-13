@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils"
 import { getFlagUrl } from "@/lib/utils/flags"
 import { FlagImage } from "@/components/matches/flag-image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarDays, Info, Lock, Clock } from "lucide-react"
+import { useState } from "react"
+import { CalendarDays, Info, Lock, Clock, ChevronDown, ChevronRight } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,18 @@ export function LeaguePredictions({
 
   const allMatches = Array.from(matchMap.values())
 
+  // The single card expanded by default = the most recent match that has kicked
+  // off (live or completed). Every other completed card starts collapsed, so a
+  // league with many members and many played matches stays short — and only the
+  // open card's member list is rendered to the DOM.
+  const pastKickoff = allMatches.filter((m) => new Date(m.kickoff_at) <= now)
+  const defaultExpandedId =
+    pastKickoff.length > 0
+      ? pastKickoff.reduce((latest, m) =>
+          m.kickoff_at > latest.kickoff_at ? m : latest
+        ).match_id
+      : null
+
   // Group matches by LOCAL calendar date (browser timezone — we're a client component)
   const dateMap = new Map<string, { sortKey: string; matches: MatchGroup[] }>()
   for (const match of allMatches) {
@@ -200,6 +213,7 @@ export function LeaguePredictions({
                     match={match}
                     currentUserId={currentUserId}
                     members={members}
+                    defaultOpen={match.match_id === defaultExpandedId}
                   />
                 ) : (
                   <UpcomingMatchRow
@@ -230,11 +244,14 @@ function CompletedMatchCard({
   match,
   currentUserId,
   members,
+  defaultOpen = false,
 }: {
   match: MatchGroup
   currentUserId: string
   members: Member[]
+  defaultOpen?: boolean
 }) {
+  const [open, setOpen] = useState(defaultOpen)
   const isLive = match.status === "live"
   const isCompleted = match.status === "completed"
   const localTime = new Date(match.kickoff_at).toLocaleTimeString(undefined, {
@@ -257,9 +274,18 @@ function CompletedMatchCard({
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
-      {/* Match header */}
-      <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between gap-2">
+      {/* Match header — click to expand/collapse the member predictions */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-4 py-3 bg-secondary/30 flex items-center justify-between gap-2 cursor-pointer group"
+        aria-expanded={open}
+      >
         <div className="flex items-center gap-2 min-w-0 flex-1">
+          {open ? (
+            <ChevronDown className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="w-4 h-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+          )}
           <TeamMini team={match.home_team} />
           <span className="text-sm font-bold text-white tabular-nums flex-shrink-0">
             {isCompleted || isLive
@@ -269,26 +295,33 @@ function CompletedMatchCard({
           <TeamMini team={match.away_team} />
         </div>
 
-        {isCompleted ? (
-          <span
-            className="text-[10px] font-medium flex-shrink-0"
-            style={{
-              background: "#0f2010",
-              border: "1px solid #22c55e",
-              color: "#22c55e",
-              borderRadius: "4px",
-              padding: "2px 6px",
-            }}
-          >
-            Completed
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[11px] text-muted-foreground hidden sm:inline">
+            {match.predictions.length} predicted
           </span>
-        ) : isLive ? (
-          <span className="text-xs font-medium text-[var(--green)] flex-shrink-0">Live</span>
-        ) : (
-          <span className="text-xs text-muted-foreground flex-shrink-0">{localTime}</span>
-        )}
-      </div>
+          {isCompleted ? (
+            <span
+              className="text-[10px] font-medium"
+              style={{
+                background: "#0f2010",
+                border: "1px solid #22c55e",
+                color: "#22c55e",
+                borderRadius: "4px",
+                padding: "2px 6px",
+              }}
+            >
+              Completed
+            </span>
+          ) : isLive ? (
+            <span className="text-xs font-medium text-[var(--green)]">Live</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">{localTime}</span>
+          )}
+        </div>
+      </button>
 
+      {open && (
+      <>
       {/* Divider */}
       <div className="h-px bg-border" />
 
@@ -348,6 +381,8 @@ function CompletedMatchCard({
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   )
 }
