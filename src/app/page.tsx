@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Trophy, Users, Star } from "lucide-react"
+import { CompetitionsShowcase } from "@/components/competitions/competitions-showcase"
 
 export default async function LandingPage() {
   const supabase = await createClient()
@@ -21,14 +22,12 @@ export default async function LandingPage() {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight max-w-2xl">
-          Predict the score.{" "}
-          <span className="text-[var(--green)]">Compete with friends.</span>{" "}
-          Climb the table.
+          One place for all your{" "}
+          <span className="text-[var(--green)]">football predictions.</span>
         </h1>
 
         <p className="text-muted-foreground text-lg max-w-xl">
-          LeagueXI is a football prediction game for the World Cup and beyond.
-          Create leagues, invite friends, and see who really knows ball.
+          LeagueXI brings all your football predictions into one place.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -38,6 +37,11 @@ export default async function LandingPage() {
           <Button asChild size="lg" variant="outline" className="border-border bg-card hover:bg-secondary">
             <Link href="/matches">View Matches</Link>
           </Button>
+        </div>
+
+        {/* ── Competitions roadmap — supports the hero, presentational only ── */}
+        <div className="w-full max-w-md pt-4">
+          <CompetitionsShowcase variant="grid" />
         </div>
       </section>
 
@@ -108,7 +112,7 @@ export default async function LandingPage() {
         <div className="max-w-md mx-auto space-y-4">
           <h2 className="text-2xl font-bold">Ready to play?</h2>
           <p className="text-muted-foreground text-sm">
-            Sign up free. No passwords. Just predictions.
+            Sign up free in seconds. Your predictions are waiting.
           </p>
           <Button asChild size="lg" className="bg-[var(--green)] hover:bg-[var(--green)]/90 text-white w-full sm:w-auto">
             <Link href="/auth/login">Create your account</Link>

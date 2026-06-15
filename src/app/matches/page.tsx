@@ -6,6 +6,7 @@ import { StatusBanner, type BannerSection } from "@/components/matches/status-ba
 import { CalendarDays } from "lucide-react"
 import { getGroupStageMatchday } from "@/lib/utils/date"
 import { LocalDayGroups } from "@/components/matches/local-day-groups"
+import { CompetitionsShowcase } from "@/components/competitions/competitions-showcase"
 
 export const revalidate = 60
 
@@ -262,6 +263,9 @@ export default async function MatchesPage() {
           </p>
         )}
       </div>
+
+      {/* ── Competitions roadmap (compact, presentational) ── */}
+      <CompetitionsShowcase variant="compact" />
 
       <div className="space-y-4">
         {/* ── Status banner ── */}
