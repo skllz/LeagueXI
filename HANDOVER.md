@@ -1,6 +1,6 @@
 # LeagueXI — Living Handover Document (FULL DETAIL)
 
-> **LAST UPDATED:** 2026-06-14
+> **LAST UPDATED:** 2026-06-15
 > **STATUS:** Living document — kept current as work proceeds. Insurance against context loss, not a one-time export. **Nothing is intentionally summarized away; this is the complete record.**
 > **BUILT ON:** the Session-1 handover *"LeagueXI — Complete Session Handover Document, Generated June 10 2026"* (Sections 0–18), pasted by the owner at the start of Session 2. This doc **incorporates and supersedes** it; on conflict, this doc wins (carries Session-2 verifications).
 
@@ -29,6 +29,15 @@
 ---
 
 ## CHANGELOG
+
+### 2026-06-15 — Competitions roadmap (platform positioning) shipped
+Added a **purely presentational, zero-backend** "Competitions" showcase positioning LeagueXI as a year-round platform. `GIT: merge f657ed6` (branch `feat/competitions-showcase`; commits 53b9d0b, 14bf15a, 2b8c0bd).
+- New component `FILE: src/components/competitions/competitions-showcase.tsx` — server component, `variant: "compact" | "grid"`. NOT navigation: no links/buttons/click handlers; chips/cards are plain divs (`aria-label` for a11y). Stylized brand-tinted crest stand-ins (gold trophy = WC, purple "PL", navy starball = UCL, green globe = AFCON) — **not official logos** (licensing note: real marks would need sourcing/permission).
+- Order: **World Cup (Live now) → Premier League → UEFA Champions League → AFCON**, all "Coming soon" except WC.
+- **Matches page** (`src/app/matches/page.tsx`): `variant="compact"` — single horizontal non-clickable chip row under the header, WC active/green, others dimmed (opacity 55%), tagline "One place for all your football predictions." Protects the prediction flow (keeps match cards high).
+- **Homepage** (`src/app/page.tsx`): `variant="grid"` under the hero. Hero headline reverted to "One place for all your football predictions." (green "football predictions."); subheading now "LeagueXI brings all your football predictions into one place." (dropped the old "Predict scores… / your home … World Cup and beyond" line). Grid label "One account. Every competition."; cards show "Live now" / "Coming soon".
+- Also fixed stale CTA copy on the landing page: "No passwords. Just predictions." → "Sign up free in seconds. Your predictions are waiting." (Section 17 item 1 / stale-copy issue partially addressed; hero stale copy also now gone.)
+- **No backend, no DB, no tracking, no "Notify me"** — deliberately deferred. Interest-capture remains the recommended growth follow-up (needs one small table) but was explicitly out of scope.
 
 ### 2026-06-14 (c) — Expanded to FULL detail
 Rewrote the living doc to reproduce **all** detail from the June-10 handover (full file inventory, complete schema-drift list, env-var tables, every auth sub-flow, matchday cutoffs, all bugs/edge cases, danger zones, verification checklist) merged with Session-2 work. Nothing condensed.
