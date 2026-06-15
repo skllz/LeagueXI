@@ -138,16 +138,20 @@ export function StatusBanner({
     const diffMs = nextSection.unlockMs - nowMs
     if (diffMs > 0) {
       const openFragment = formatNextOpen(nextSection.unlockMs, nowMs)
-      line2 = `${nextSection.label} opens ${openFragment} — predict ${activeSection.label} now`
+      // When fully caught up, drop the "predict … now" CTA — it contradicts the
+      // completed state. Just show when the next section opens.
+      line2 = allCaughtUp
+        ? `${nextSection.label} opens ${openFragment}`
+        : `${nextSection.label} opens ${openFragment} — predict ${activeSection.label} now`
     }
-  } else {
+  } else if (!allCaughtUp) {
     // No more locked sections — this is the last active round
     line2 = `${activeSection.label} — predict now`
   }
 
   // ── Line 1 ───────────────────────────────────────────────────────────────
   const line1 = allCaughtUp
-    ? `You're all caught up — ${activeSection.label} complete ✓`
+    ? `${predictedAvailableCount} of ${clientAvailableCount} ${activeSection.label} predictions completed`
     : `${activeSection.label} is open — ${activeSection.matchCount} matches to predict`
 
   // ── Render ───────────────────────────────────────────────────────────────

@@ -27,7 +27,7 @@ export default async function LandingPage() {
         </h1>
 
         <p className="text-muted-foreground text-lg max-w-xl">
-          LeagueXI brings all your football predictions into one place.
+          Predict scores. Compete with friends. Climb the table.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
