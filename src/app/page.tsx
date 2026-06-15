@@ -22,14 +22,12 @@ export default async function LandingPage() {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight max-w-2xl">
-          LeagueXI brings all your{" "}
-          <span className="text-[var(--green)]">football predictions</span>{" "}
-          into one place.
+          One place for all your{" "}
+          <span className="text-[var(--green)]">football predictions.</span>
         </h1>
 
         <p className="text-muted-foreground text-lg max-w-xl">
-          Predict scores. Compete with friends. Climb the table.
-          LeagueXI is your home for football predictions — for the World Cup and beyond.
+          LeagueXI brings all your football predictions into one place.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
