@@ -21,7 +21,7 @@ type Competition = {
 const COMPETITIONS: Competition[] = [
   { key: "wc",    compactLabel: "World Cup",      gridLabel: "World Cup",      live: true,  bg: "#c8a951", fg: "#3a2f0b", icon: "trophy" },
   { key: "pl",    compactLabel: "Premier League", gridLabel: "Premier League", live: false, bg: "#37003c", fg: "#ffffff", icon: "pl" },
-  { key: "ucl",   compactLabel: "UCL",            gridLabel: "Champions Lg",   live: false, bg: "#0b1e3f", fg: "#ffffff", icon: "star" },
+  { key: "ucl",   compactLabel: "UCL",            gridLabel: "UCL",            live: false, bg: "#0b1e3f", fg: "#ffffff", icon: "star" },
   { key: "afcon", compactLabel: "AFCON",          gridLabel: "AFCON",          live: false, bg: "#0a7d3b", fg: "#ffffff", icon: "globe" },
 ]
 
