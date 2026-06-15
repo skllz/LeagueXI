@@ -22,8 +22,9 @@ export default async function LandingPage() {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight max-w-2xl">
-          One place for all your{" "}
-          <span className="text-[var(--green)]">football predictions.</span>
+          LeagueXI brings all your{" "}
+          <span className="text-[var(--green)]">football predictions</span>{" "}
+          into one place.
         </h1>
 
         <p className="text-muted-foreground text-lg max-w-xl">

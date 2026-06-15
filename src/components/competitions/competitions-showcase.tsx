@@ -76,7 +76,7 @@ export function CompetitionsShowcase({ variant }: { variant: "compact" | "grid" 
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground mt-2">
-          One place for all your football predictions.
+          LeagueXI brings all your football predictions into one place.
         </p>
       </section>
     )
@@ -100,7 +100,7 @@ export function CompetitionsShowcase({ variant }: { variant: "compact" | "grid" 
             <div className="min-w-0">
               <div className="text-xs font-medium leading-tight truncate">{c.gridLabel}</div>
               <div className={cn("text-[11px]", c.live ? "text-[var(--green)]" : "text-muted-foreground")}>
-                {c.live ? "Live now" : "Soon"}
+                {c.live ? "Live now" : "Coming soon"}
               </div>
             </div>
           </div>
