@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { adminDeleteLeague } from "@/app/actions/admin"
+import { GLOBAL_LEAGUE_ID } from "@/lib/constants"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Lock, Archive } from "lucide-react"
 import Link from "next/link"
@@ -60,13 +61,17 @@ export function AdminLeagueRow({ league }: AdminLeagueRowProps) {
         {league.owner_username ? `@${league.owner_username}` : "—"}
       </td>
       <td className="px-4 py-3">
-        <button
-          onClick={handleDelete}
-          disabled={loading}
-          className="text-xs text-destructive hover:underline underline-offset-2 disabled:opacity-40"
-        >
-          {loading ? "Deleting…" : "Delete"}
-        </button>
+        {league.id === GLOBAL_LEAGUE_ID ? (
+          <span className="text-xs text-muted-foreground">Protected</span>
+        ) : (
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="text-xs text-destructive hover:underline underline-offset-2 disabled:opacity-40"
+          >
+            {loading ? "Deleting…" : "Delete"}
+          </button>
+        )}
       </td>
     </tr>
   )
