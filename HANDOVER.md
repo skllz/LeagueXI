@@ -30,6 +30,13 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (b) — Competitions roadmap polish
+Presentational follow-up. `GIT: merge 2581f8b` (branch `feat/competitions-polish`; commits 69203a3, d9ec872).
+- Matches compact strip: removed the "One place…" tagline; UCL label instead of "Champions"; upcoming chips now clearly non-interactive (`cursor-default`, `select-none`, `-webkit-tap-highlight-color: transparent`) with a muted "Soon" label (fixes "looks clickable on mobile").
+- Homepage grid: UCL label too (was "Champions Lg").
+- `FILE: src/components/matches/status-banner.tsx`: caught-up state now reads `"{predictedAvailableCount} of {clientAvailableCount} {activeSection.label} predictions completed"` (was "You're all caught up — … complete ✓") and drops the contradictory "predict … now" CTA when caught up. NOTE: the count is across all currently-unlocked sections, so once MD2 unlocks it aggregates (e.g. "40 of 40 Matchday 2"); strict per-matchday counting is deferred (needs a small data change to pass a per-section predicted count).
+- Homepage subheading → "Predict scores. Compete with friends. Climb the table." (hero headline stays "One place for all your football predictions.").
+
 ### 2026-06-15 — Competitions roadmap (platform positioning) shipped
 Added a **purely presentational, zero-backend** "Competitions" showcase positioning LeagueXI as a year-round platform. `GIT: merge f657ed6` (branch `feat/competitions-showcase`; commits 53b9d0b, 14bf15a, 2b8c0bd).
 - New component `FILE: src/components/competitions/competitions-showcase.tsx` — server component, `variant: "compact" | "grid"`. NOT navigation: no links/buttons/click handlers; chips/cards are plain divs (`aria-label` for a11y). Stylized brand-tinted crest stand-ins (gold trophy = WC, purple "PL", navy starball = UCL, green globe = AFCON) — **not official logos** (licensing note: real marks would need sourcing/permission).
