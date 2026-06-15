@@ -21,7 +21,7 @@ type Competition = {
 const COMPETITIONS: Competition[] = [
   { key: "wc",    compactLabel: "World Cup",      gridLabel: "World Cup",      live: true,  bg: "#c8a951", fg: "#3a2f0b", icon: "trophy" },
   { key: "pl",    compactLabel: "Premier League", gridLabel: "Premier League", live: false, bg: "#37003c", fg: "#ffffff", icon: "pl" },
-  { key: "ucl",   compactLabel: "Champions",      gridLabel: "Champions Lg",   live: false, bg: "#0b1e3f", fg: "#ffffff", icon: "star" },
+  { key: "ucl",   compactLabel: "UCL",            gridLabel: "UCL",            live: false, bg: "#0b1e3f", fg: "#ffffff", icon: "star" },
   { key: "afcon", compactLabel: "AFCON",          gridLabel: "AFCON",          live: false, bg: "#0a7d3b", fg: "#ffffff", icon: "globe" },
 ]
 
@@ -59,25 +59,27 @@ export function CompetitionsShowcase({ variant }: { variant: "compact" | "grid" 
               key={c.key}
               aria-label={c.live ? `${c.compactLabel}, live now` : `${c.compactLabel}, coming soon`}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border whitespace-nowrap flex-shrink-0 pl-1.5 pr-3 py-1",
-                c.live ? "" : "border-border opacity-55"
+                "flex items-center gap-1.5 rounded-full border whitespace-nowrap flex-shrink-0 pl-1.5 pr-3 py-1 cursor-default select-none",
+                c.live ? "" : "border-border opacity-50"
               )}
-              style={c.live ? { borderColor: ACTIVE_BORDER, background: ACTIVE_BG } : undefined}
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                ...(c.live ? { borderColor: ACTIVE_BORDER, background: ACTIVE_BG } : {}),
+              }}
             >
               <Crest comp={c} size={20} />
               <span className="text-[11px] font-medium">{c.compactLabel}</span>
-              {c.live && (
+              {c.live ? (
                 <span className="flex items-center gap-1 text-[11px] text-[var(--green)]">
                   <span className="w-[5px] h-[5px] rounded-full bg-[var(--green)] inline-block" />
                   Live
                 </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Soon</span>
               )}
             </div>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground mt-2">
-          One place for all your football predictions.
-        </p>
       </section>
     )
   }
