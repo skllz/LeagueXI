@@ -30,6 +30,13 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (c) — Global League protected from deletion
+`GIT: merge 6c8100c` (branch `fix/protect-global-league`; commit bc38d6e).
+- New `FILE: src/lib/constants.ts` exports `GLOBAL_LEAGUE_ID = "00000000-0000-0000-0000-000000000001"` (single source of truth).
+- `FILE: src/app/actions/admin.ts` — `adminDeleteLeague` now returns `"The Global League cannot be deleted."` and short-circuits before the delete when `leagueId === GLOBAL_LEAGUE_ID` (authoritative server guard).
+- `FILE: src/components/admin/admin-league-row.tsx` — the Global League row shows a muted "Protected" label instead of a Delete button.
+- Closes the gap noted earlier: `adminDeleteLeague` deletes ANY league (not just archived) and previously had no global-league safeguard — a misclick would have wiped ~350 members' global standings (cascade on `league_members`).
+
 ### 2026-06-15 (b) — Competitions roadmap polish
 Presentational follow-up. `GIT: merge 2581f8b` (branch `feat/competitions-polish`; commits 69203a3, d9ec872).
 - Matches compact strip: removed the "One place…" tagline; UCL label instead of "Champions"; upcoming chips now clearly non-interactive (`cursor-default`, `select-none`, `-webkit-tap-highlight-color: transparent`) with a muted "Soon" label (fixes "looks clickable on mobile").
