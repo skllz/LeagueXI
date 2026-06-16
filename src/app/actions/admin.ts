@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { GLOBAL_LEAGUE_ID } from "@/lib/constants"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -145,6 +146,11 @@ export async function adminDeleteLeague(leagueId: string): Promise<{ error?: str
   try {
     const { supabase, error: authError } = await requireAdmin()
     if (authError || !supabase) return { error: authError ?? "Auth failed" }
+    // Hard guard: the global league must never be deleted — it holds every
+    // user's global standings and all members are auto-joined to it.
+    if (leagueId === GLOBAL_LEAGUE_ID) {
+      return { error: "The Global League cannot be deleted." }
+    }
     const { error } = await supabase.from("leagues").delete().eq("id", leagueId)
     if (error) return { error: error.message }
     revalidatePath("/admin/leagues")
