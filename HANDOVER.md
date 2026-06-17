@@ -30,6 +30,13 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (d) — Matchday grouping fixed (was date-cutoff, now per-team order)
+`GIT: merge c0b20a8` (branch `fix/matchday-assignment`; commit 46a9b0f).
+- BUG (owner-found, confirmed via live SQL): group matches were bucketed into Matchday 1/2/3 by fixed UTC date cutoffs (`MATCHDAY_CUTOFFS` Jun 17 / Jun 23 noon in `src/lib/utils/date.ts`). The LIVE `matches` table holds the **real** qualified teams + real kickoff dates (from the `scripts/fetch-fixtures.mjs` → football-data.org pipeline and/or admin edits), NOT the approximate seed in `supabase/wc2026-fixtures.sql`. Real dates overlap the cutoffs, so 8 teams (Colombia, Congo DR, Croatia, England, Ghana, Panama, Portugal, Uzbekistan) were mis-bucketed — totals 20/24/28 instead of 24/24/24, several teams with two MD3 games and none in an earlier matchday.
+- FIX (`FILE: src/app/matches/page.tsx`): new `computeMatchdayMap()` derives each group match's matchday from the chronological order of each team's own three group games (1st=MD1, 2nd=MD2, 3rd=MD3), using the home team's ordering as the deterministic source. Guarantees each team once per matchday (24/24/24) and is immune to future kickoff-time edits/re-fetches. Code-only, no DB change, reads only live matches.
+- `getGroupStageMatchday`/`MATCHDAY_CUTOFFS` in `src/lib/utils/date.ts` are now UNUSED (left in place; harmless). The diagnostic SQL (per-team count by date-cutoff) will still show 20/24/28 because it tests the DB dates, not the app logic — that's expected; the app now ignores those cutoffs.
+- Data note: live fixtures ≠ seed file. Seed `wc2026-fixtures.sql` has placeholder teams (Tanzania/Serbia/Angola/etc.) + approximate dates; live DB has real qualifiers. Don't trust the seed for current team/fixture facts.
+
 ### 2026-06-15 (c) — Global League protected from deletion
 `GIT: merge 6c8100c` (branch `fix/protect-global-league`; commit bc38d6e).
 - New `FILE: src/lib/constants.ts` exports `GLOBAL_LEAGUE_ID = "00000000-0000-0000-0000-000000000001"` (single source of truth).
