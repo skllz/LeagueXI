@@ -4,7 +4,6 @@ import { RoundGroup } from "@/components/matches/round-group"
 import { MatchdayGroup } from "@/components/matches/matchday-group"
 import { StatusBanner, type BannerSection } from "@/components/matches/status-banner"
 import { CalendarDays } from "lucide-react"
-import { getGroupStageMatchday } from "@/lib/utils/date"
 import { LocalDayGroups } from "@/components/matches/local-day-groups"
 import { CompetitionsShowcase } from "@/components/competitions/competitions-showcase"
 
@@ -75,6 +74,35 @@ const LOCK_MS = 48 * 60 * 60 * 1000
 
 function unlockTime(firstKickoff: string): number {
   return new Date(firstKickoff).getTime() - LOCK_MS
+}
+
+// Assign each group match a matchday (1/2/3) from the chronological order of
+// each team's own group games: a team's 1st game is Matchday 1, 2nd is 2, 3rd
+// is 3. This is robust to the real schedule's overlapping dates (unlike fixed
+// date cutoffs, which mis-bucket boundary games) and guarantees each team
+// appears exactly once per matchday. Reads only the live matches passed in —
+// no fixture seed involved.
+function computeMatchdayMap(groupMatches: MatchWithTeams[]): Map<string, 1 | 2 | 3> {
+  const perTeam = new Map<string, MatchWithTeams[]>()
+  for (const m of groupMatches) {
+    for (const teamId of [m.home_team.id, m.away_team.id]) {
+      const arr = perTeam.get(teamId)
+      if (arr) arr.push(m)
+      else perTeam.set(teamId, [m])
+    }
+  }
+  for (const arr of perTeam.values()) {
+    arr.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))
+  }
+  const result = new Map<string, 1 | 2 | 3>()
+  for (const m of groupMatches) {
+    // Both teams in a group fixture play the same round, so the home team's
+    // ordering is a consistent, deterministic source for the matchday.
+    const homeGames = perTeam.get(m.home_team.id)!
+    const idx = homeGames.findIndex(g => g.id === m.id)
+    result.set(m.id, (Math.min(Math.max(idx, 0), 2) + 1) as 1 | 2 | 3)
+  }
+  return result
 }
 
 function computeActiveMd(
@@ -164,12 +192,14 @@ export default async function MatchesPage() {
     .filter(m => m.round === "Group Stage")
     .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))
 
+  const matchdayMap = computeMatchdayMap(groupStageMatches)
+
   const knockoutMatches = matches.filter(m => m.round !== "Group Stage")
 
   // Build per-matchday data (flat matches array — date grouping is done
   // client-side by LocalDayGroups so the timezone is always the user's local tz)
   const matchdays = ([1, 2, 3] as const).map(md => {
-    const mdMatches = groupStageMatches.filter(m => getGroupStageMatchday(m.kickoff_at) === md)
+    const mdMatches = groupStageMatches.filter(m => matchdayMap.get(m.id) === md)
     return {
       md,
       matchCount: mdMatches.length,
