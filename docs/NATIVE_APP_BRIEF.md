@@ -188,3 +188,94 @@ These live in the web client, not the DB — the native app must reimplement the
   (see web `HANDOVER.md` — no payments/betting, etc.).
 - Push notifications will need a small backend addition (store device tokens +
   send on events). Plan it as backend work shared by all clients.
+
+---
+
+## PART C — Finalized Build Plan (decisions locked 2026-06-15)
+
+**Decisions:** straight to native (no PWA bridge) · email/password primary,
+Google best-effort · new repo `skllz/LeagueXI-native` + its own Claude Code
+session. Web app stays live and untouched.
+
+### Phases
+
+**Phase 0 — Repo + accounts (½–1 day)**
+- New GitHub repo; `npx create-expo-app@latest` (TypeScript + Expo Router).
+- Accounts: Expo (free), Apple Developer ($99/yr), Google Play ($25 once). EAS CLI.
+- Copy `src/types/database.ts` + `src/lib/constants.ts` in verbatim.
+- `SUPABASE_URL` + anon key in `app.config.ts` `extra` (publishable only — NEVER
+  the service-role key).
+- Supabase Auth allow-list: add `leaguexi://**` scheme (keep `leaguexi.io/**`).
+
+**Phase A — Backend connectivity (LOAD-BEARING GATE)**
+- `supabase-js` + AsyncStorage, `detectSessionInUrl: false`, `proxyFetch` →
+  `https://leaguexi.io/api/supabase-proxy` (Part B §4).
+- **GATE:** verify a logged-in REST read + an RPC call + token refresh all
+  succeed through the proxy on a real blocked/Nigerian network BEFORE building
+  any UI. If this fails, nothing downstream matters.
+
+**Phase B — Auth**
+- Email/password primary: `signUp` / `signInWithPassword`.
+- Google best-effort: `expo-auth-session` deep link; graceful fallback if the
+  authorize hop fails behind an ISP block (don't hard-block).
+- **REQUIRED — set/forgot-password flow (`resetPasswordForEmail`):** existing
+  users who signed up with Google have NO password and would be locked out if
+  OAuth fails; this gives them a way in. Reset email → `leaguexi.io` (reachable).
+- Email-confirmation handling: check the Supabase setting; if on, show a "check
+  your inbox" state before login works.
+- Onboarding username gate (mirrors web `/onboarding`); setting username fires
+  the live DB auto-join trigger — do NOT rebuild it.
+
+**Phase C — Matches + predictions (highest value)**
+- Port `computeMatchdayMap` from web `src/app/matches/page.tsx` (per-team game
+  order; NEVER date cutoffs).
+- +/- score input, range 0–20; lock when `kickoff_at` passed or status ≠
+  `scheduled` (server re-checks too).
+- Render kickoff times + day grouping in the user's LOCAL timezone (mirror the
+  web `ClientTime` / `LocalDayGroups`).
+- Flags from `teams.country` (port `getFlagUrl` / flagcdn; `logo_url` often null).
+
+**Phase D — Global leaderboard:** `get_leaderboard`; top-N + pinned current-user row.
+
+**Phase E — Leagues:** list (my/public); detail tabs (leaderboard / predictions /
+members); create; join by code + link; invite/share. `get_league_predictions`
+— pass `p_caller_id` explicitly. Replicate live-match privacy (hide own
+prediction while `live`, reappears at full time).
+
+**Phase F — Profile:** `get_user_rank`; edit username.
+
+**Phase G — Shared backend additions (coordinate with the web/backend session —
+this is the ONLY work that touches the web repo)**
+- **Push notifications:** `device_tokens` table + send mechanism (Edge Function
+  / cron) on kickoff reminders + results-scored; Expo Notifications on device.
+- **Account deletion (Apple 5.1.1(v) — REQUIRED for approval):** self-serve
+  "delete my account" that removes the auth user and cascades
+  profile/predictions/league_members. Handle league OWNERS (block until
+  transferred, or auto-transfer/delete) — don't orphan a league. New backend
+  work; build alongside push.
+
+### STORE SUBMISSION CHECKLIST — approval blockers (do before submitting)
+1. **In-app account deletion** (Phase G) — Apple rejects without it.
+2. **Privacy policy URL** (host on leaguexi.io) + Apple **App Privacy** labels +
+   Google Play **Data Safety** form.
+3. **Reviewer demo account** (email/password) in submission notes — app is
+   login-gated; reviewers must be able to sign in.
+4. **Sign in with Apple (4.8):** confirm exemption (likely exempt because you
+   offer email/password) BEFORE submitting — common rejection cause.
+5. **Store assets:** app icon, splash screen, per-device screenshots, listing copy.
+6. **Native UX states:** loading / offline / error handling throughout (no-network
+   is common for this audience).
+
+### Ship
+EAS Build (cloud, no Mac) → TestFlight + Play internal track → store submit.
+EAS Update (OTA) for JS-only fixes between store releases.
+
+**Costs:** Apple $99/yr + Google $25 once + Expo free + Supabase unchanged —
+under $250/yr.
+
+### Cross-repo coordination (owned by the WEB/BACKEND repo + session)
+- `device_tokens` table + push send mechanism.
+- Self-serve account-deletion backend (RPC / Edge Function) + league-owner handling.
+- (Planned) the football-data.org auto-score fetch should emit the
+  "match completed / scored" events that push notifications hook into — design
+  push and the auto-fetch to share that trigger.

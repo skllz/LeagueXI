@@ -30,6 +30,9 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (f) — Native app build plan + compliance gaps finalized
+Appended PART C (Finalized Build Plan) to `docs/NATIVE_APP_BRIEF.md`: phased plan (Phase 0 → A connectivity gate → B–F screens → G shared backend), a Store Submission Checklist of approval blockers, and a Cross-repo coordination list. **New backend work this repo owns (not yet built):** (1) self-serve account deletion — Apple 5.1.1(v) requires it; must cascade profile/predictions/league_members and handle league owners; (2) `device_tokens` table + push-send mechanism (Edge Function/cron) for kickoff reminders + results-scored; design to share the trigger with the planned football-data.org auto-score fetch. Auth note: native is email/password-primary + a `resetPasswordForEmail` path so Google-only users aren't locked out.
+
 ### 2026-06-15 (e) — Native app brief added
 `FILE: docs/NATIVE_APP_BRIEF.md` — product brief + technical handover for a future, SEPARATE Claude Code session/repo to build a real native app (Expo/React Native + EAS Build, no Mac; solo non-dev; ≤~$250/yr). Reuses the Supabase backend unchanged. Key reuse insight: native can route through the existing `https://leaguexi.io/api/supabase-proxy` to dodge the Nigerian ISP block. Lists the RPC surface, data model, auth/deep-link notes, and the CLIENT-SIDE logic the native app must replicate (esp. matchday-from-per-team-order, NOT date cutoffs). Copy-ready shared files: `src/types/database.ts` (pure types) and `src/lib/constants.ts`. Decision: native app is its OWN repo + OWN Claude Code session; this session/repo stays web + backend.
 
