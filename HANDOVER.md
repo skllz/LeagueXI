@@ -30,6 +30,9 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (e) — Native app brief added
+`FILE: docs/NATIVE_APP_BRIEF.md` — product brief + technical handover for a future, SEPARATE Claude Code session/repo to build a real native app (Expo/React Native + EAS Build, no Mac; solo non-dev; ≤~$250/yr). Reuses the Supabase backend unchanged. Key reuse insight: native can route through the existing `https://leaguexi.io/api/supabase-proxy` to dodge the Nigerian ISP block. Lists the RPC surface, data model, auth/deep-link notes, and the CLIENT-SIDE logic the native app must replicate (esp. matchday-from-per-team-order, NOT date cutoffs). Copy-ready shared files: `src/types/database.ts` (pure types) and `src/lib/constants.ts`. Decision: native app is its OWN repo + OWN Claude Code session; this session/repo stays web + backend.
+
 ### 2026-06-15 (d) — Matchday grouping fixed (was date-cutoff, now per-team order)
 `GIT: merge c0b20a8` (branch `fix/matchday-assignment`; commit 46a9b0f).
 - BUG (owner-found, confirmed via live SQL): group matches were bucketed into Matchday 1/2/3 by fixed UTC date cutoffs (`MATCHDAY_CUTOFFS` Jun 17 / Jun 23 noon in `src/lib/utils/date.ts`). The LIVE `matches` table holds the **real** qualified teams + real kickoff dates (from the `scripts/fetch-fixtures.mjs` → football-data.org pipeline and/or admin edits), NOT the approximate seed in `supabase/wc2026-fixtures.sql`. Real dates overlap the cutoffs, so 8 teams (Colombia, Congo DR, Croatia, England, Ghana, Panama, Portugal, Uzbekistan) were mis-bucketed — totals 20/24/28 instead of 24/24/24, several teams with two MD3 games and none in an earlier matchday.
