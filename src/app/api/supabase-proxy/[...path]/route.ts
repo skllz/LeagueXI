@@ -50,6 +50,16 @@ async function handleProxy(
     upstreamHeaders.set("apikey", SUPABASE_ANON_KEY)
   }
 
+  // Auth fallback for clients whose standard `Authorization` header is stripped
+  // inbound by the edge (CDN/host). Such clients (e.g. the native app) send the
+  // bearer token in a custom header that survives; map it onto the upstream
+  // Authorization only when the standard one didn't arrive. Additive — the web
+  // browser, which sends a normal Authorization, is unaffected.
+  if (!upstreamHeaders.get("authorization")) {
+    const fallbackAuth = request.headers.get("x-supabase-authorization")
+    if (fallbackAuth) upstreamHeaders.set("authorization", fallbackAuth)
+  }
+
   // Forward body for methods that carry one
   const hasBody = request.method !== "GET" && request.method !== "HEAD"
   const body = hasBody ? await request.arrayBuffer() : undefined
@@ -142,7 +152,7 @@ export async function OPTIONS() {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
       "access-control-allow-headers":
-        "authorization, apikey, content-type, prefer, range, x-client-info, x-upsert",
+        "authorization, x-supabase-authorization, apikey, content-type, prefer, range, x-client-info, x-upsert",
       "access-control-max-age": "86400",
     },
   })
