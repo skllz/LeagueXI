@@ -30,6 +30,12 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (g) — Proxy: x-supabase-authorization fallback (for native clients)
+`GIT: merge c5fc246` (branch `fix/proxy-auth-fallback`; commit 650148f). **Touches the Danger-Zone proxy route — owner approved.**
+- ROOT CAUSE (found by the native-app session): the proxy forwards the standard `Authorization` header, but edge infra (CDN/host) strips it INBOUND, so a client that routes ALL authenticated traffic through the proxy reaches Supabase as anonymous and RLS blocks it. The web app never hit this because its authenticated work runs server-side on the DIRECT url; only auth handshakes go through the proxy. The native app is 100% client → every authed call hit the gap (also explains the native `getUser()` "no user id" gate failure).
+- FIX (`FILE: src/app/api/supabase-proxy/[...path]/route.ts`): additive — if the standard `authorization` didn't arrive, read the bearer from custom header `x-supabase-authorization` and set it as the upstream Authorization. Added that header to CORS allow-headers. **Web browser path (normal Authorization) is unchanged** — fallback only fires when the standard header is absent.
+- NATIVE CONTRACT: native `proxyFetch` must copy `Authorization` → `x-supabase-authorization` on every request. Owned split: web/backend repo owns the proxy; native repo owns only its client.
+
 ### 2026-06-15 (f) — Native app build plan + compliance gaps finalized
 Appended PART C (Finalized Build Plan) to `docs/NATIVE_APP_BRIEF.md`: phased plan (Phase 0 → A connectivity gate → B–F screens → G shared backend), a Store Submission Checklist of approval blockers, and a Cross-repo coordination list. **New backend work this repo owns (not yet built):** (1) self-serve account deletion — Apple 5.1.1(v) requires it; must cascade profile/predictions/league_members and handle league owners; (2) `device_tokens` table + push-send mechanism (Edge Function/cron) for kickoff reminders + results-scored; design to share the trigger with the planned football-data.org auto-score fetch. Auth note: native is email/password-primary + a `resetPasswordForEmail` path so Google-only users aren't locked out.
 
@@ -330,6 +336,7 @@ Middleware (src/lib/supabase/middleware.ts) → SUPABASE_URL ?? NEXT_PUBLIC_SUPA
 
 # SECTION 7 — Supabase Proxy (detail)
 `FILE: src/app/api/supabase-proxy/[...path]/route.ts` — **ACTIVE.** Methods: GET/POST/PUT/PATCH/DELETE/OPTIONS. Forwards headers: `authorization`, `apikey`, `content-type`, `prefer`, `range`, `x-client-info`, `x-upsert`. Sets CORS. `SUPABASE_URL` (server-only) = forward target; `NEXT_PUBLIC_SUPABASE_URL` = browser cookie-key URL. Both same project. **Do not rename/disable.**
+- **Auth fallback (2026-06-15):** edge infra strips the inbound `Authorization` header, so all-client callers (native app) lose their bearer. The route now reads a custom `x-supabase-authorization` header and maps it onto the upstream Authorization when the standard one is absent. Web browser unaffected. Native clients MUST send their bearer in `x-supabase-authorization`. Do not remove this fallback — it's what lets the native app authenticate through the proxy.
 
 # SECTION 8 — Auth Flow
 **Email/password:** `login-form.tsx` → `signInWithPassword()` → cookies via `@supabase/ssr` → middleware refreshes via `getUser()` → `x-onboarded` cookie (=user.id, 7-day) caches username check. On sign-in: no username → `/onboarding`; `is_admin` → `/admin`; else `/matches`. **(S2)** honours `next` when present.
