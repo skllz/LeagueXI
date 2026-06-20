@@ -30,6 +30,14 @@
 
 ## CHANGELOG
 
+### 2026-06-15 (h) — Account deletion BUILT + VERIFIED LIVE
+`GIT: merge 4d191e8` (branch `feat/account-deletion`; commit 4be0ae3).
+- Shipped: `supabase/account-deletion-fn.sql` → `delete_user_account(p_user_id uuid)` SECURITY DEFINER (granted to `service_role` only), and `FILE: src/app/api/account/delete/route.ts` (POST). RPC does transactional league pre-work (transfer owned leagues to oldest remaining member by `joined_at, user_id`; delete sole-member leagues; refuse if caller owns the Global League). Route verifies the token (sent via `x-supabase-authorization`), runs the RPC, then `auth.admin.deleteUser` (service role) → cascade removes profile/predictions/memberships.
+- VERIFIED live 2026-06-15 with throwaway accounts: A owned a league with B in it → DELETE returned `{ok:true, leagues_transferred:1}` → B inherited the league → A could no longer log in. Cascade + transfer + auth-delete all confirmed.
+- Prereqs now satisfied in prod: `delete_user_account` run in live DB; `SUPABASE_SERVICE_ROLE_KEY` confirmed present in Vercel (this is the FIRST code to use it — previously unused).
+- **HOST GOTCHA (found during testing):** apex `leaguexi.io` issues a **308 redirect on POST → `www.leaguexi.io`**. Browsers/`fetch` follow it (web + native still work), but the native app should target `https://www.leaguexi.io` for the proxy AND this endpoint to skip the hop. PowerShell 5.1 does NOT re-issue POST across 308 (testing gotcha only).
+- Native contract: `POST https://www.leaguexi.io/api/account/delete`, header `x-supabase-authorization: Bearer <access_token>`; 200 `{ok,leagues_transferred,leagues_deleted}`; 400 (e.g. owns Global League), 401 (bad token), 500 (not configured). Native signs out locally after 200.
+
 ### 2026-06-15 (g) — Proxy: x-supabase-authorization fallback (for native clients)
 `GIT: merge c5fc246` (branch `fix/proxy-auth-fallback`; commit 650148f). **Touches the Danger-Zone proxy route — owner approved.**
 - ROOT CAUSE (found by the native-app session): the proxy forwards the standard `Authorization` header, but edge infra (CDN/host) strips it INBOUND, so a client that routes ALL authenticated traffic through the proxy reaches Supabase as anonymous and RLS blocks it. The web app never hit this because its authenticated work runs server-side on the DIRECT url; only auth handshakes go through the proxy. The native app is 100% client → every authed call hit the gap (also explains the native `getUser()` "no user id" gate failure).

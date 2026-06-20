@@ -101,6 +101,22 @@ $0 bridge to ship "installable + push" to current users while native is built.
   description, prize_description, competition_id)
 - `league_members` (id, league_id, user_id, role [owner/member], joined_at)
 
+### 3b. HOST: use www, not the apex (verified 2026-06-15)
+Target **`https://www.leaguexi.io`** as the base for BOTH the proxy and the
+account-delete endpoint. The apex `leaguexi.io` issues a **308 redirect on POST
+→ www**; `fetch` follows it so it still works, but using www skips the hop and a
+potential failure point.
+
+### 3c. Account deletion — VERIFIED LIVE contract (2026-06-15)
+The backend is built, deployed, and tested. Native just calls it:
+- `POST https://www.leaguexi.io/api/account/delete`
+- Header `x-supabase-authorization: Bearer <access_token>` (from `getSession()`).
+- 200 `{ ok: true, leagues_transferred: n, leagues_deleted: n }` → then
+  `supabase.auth.signOut()` locally and route to a goodbye/login screen.
+- 400 (e.g. "Account owns the Global League…" → show "contact support"),
+  401 (bad/expired token), 500 (server). Do NOT build the deletion logic on the
+  native side — it's done; just call this.
+
 ### 4. ISP-blocking — REUSE THE EXISTING PROXY
 The web client (`src/lib/supabase/client.ts`) overrides supabase-js's `fetch` to
 rewrite the Supabase URL to its own `/api/supabase-proxy` endpoint. **That proxy
