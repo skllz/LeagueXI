@@ -100,7 +100,11 @@ async function handleProxy(
     "content-range, x-total-count, sb-gateway-version"
   )
 
-  const responseBody = await upstream.arrayBuffer()
+  // Null-body statuses (e.g. 204 from a `void` RPC like register_device_token,
+  // 304) MUST NOT carry a body — constructing a NextResponse with one throws,
+  // which surfaced as a 500. Pass null for those.
+  const nullBody = [101, 204, 205, 304].includes(upstream.status)
+  const responseBody = nullBody ? null : await upstream.arrayBuffer()
 
   return new NextResponse(responseBody, {
     status: upstream.status,
