@@ -30,6 +30,15 @@
 
 ## CHANGELOG
 
+### 2026-06-20 (j) — Push notifications backend (match-scored)
+`GIT: merge 0734dd6` (branch `feat/push-notifications`). **Dormant until the native app registers tokens — safe to have merged.**
+- `FILE: supabase/push-notifications.sql` — `device_tokens` table (own-row RLS; `user_id default auth.uid()`), `device_tokens_updated_at` trigger, and `register_device_token(p_token, p_platform)` SECURITY DEFINER RPC (granted to `authenticated`; reclaims a token from a prior user on the same device). **PREREQ: run this SQL in the live DB.**
+- `FILE: src/lib/push.ts` — `sendMatchScoredNotifications(matchId)`: service-role read of predictions + device_tokens → Expo push API (`https://exp.host/--/api/v2/push/send`), batched ≤100, best-effort (never throws).
+- `FILE: src/app/actions/scoring.ts` — `updateMatchResult` calls it via `after()` (post-response, non-blocking; only on first completion, NOT `recalculateMatch`, to avoid double-notify). No-op until tokens exist.
+- `/privacy` updated with a push-token disclosure bullet (closes the (i) TODO).
+- NATIVE CONTRACT: get Expo push token → `supabase.rpc('register_device_token', { p_token, p_platform })` on launch/token-change. Backend sends match-scored pushes automatically; no native send code for v1.
+- DEFERRED: kickoff-reminder pushes (need a Vercel Cron + dedup). Not built. Live send verification needs a real device (native session will do it).
+
 ### 2026-06-20 (i) — Privacy policy page published
 `GIT: merge 77b4736`. `FILE: src/app/privacy/page.tsx` — public, no-auth `/privacy` page (content authored by the native session; operator QUADRILIZE LLC, support@leaguexi.io, effective 2026-06-20). Live + verified at `https://www.leaguexi.io/privacy` (200). This is the privacy-policy URL for the App Store + Google Play listings and the Apple App Privacy / Google Data Safety forms — **use the www URL** (apex 308-redirects). TODO when push ships: add a push-token bullet to §1/§4 so the hosted policy stays in sync with the feature.
 
