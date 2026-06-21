@@ -30,6 +30,9 @@
 
 ## CHANGELOG
 
+### 2026-06-20 (i) — Privacy policy page published
+`GIT: merge 77b4736`. `FILE: src/app/privacy/page.tsx` — public, no-auth `/privacy` page (content authored by the native session; operator QUADRILIZE LLC, support@leaguexi.io, effective 2026-06-20). Live + verified at `https://www.leaguexi.io/privacy` (200). This is the privacy-policy URL for the App Store + Google Play listings and the Apple App Privacy / Google Data Safety forms — **use the www URL** (apex 308-redirects). TODO when push ships: add a push-token bullet to §1/§4 so the hosted policy stays in sync with the feature.
+
 ### 2026-06-15 (h) — Account deletion BUILT + VERIFIED LIVE
 `GIT: merge 4d191e8` (branch `feat/account-deletion`; commit 4be0ae3).
 - Shipped: `supabase/account-deletion-fn.sql` → `delete_user_account(p_user_id uuid)` SECURITY DEFINER (granted to `service_role` only), and `FILE: src/app/api/account/delete/route.ts` (POST). RPC does transactional league pre-work (transfer owned leagues to oldest remaining member by `joined_at, user_id`; delete sole-member leagues; refuse if caller owns the Global League). Route verifies the token (sent via `x-supabase-authorization`), runs the RPC, then `auth.admin.deleteUser` (service role) → cascade removes profile/predictions/memberships.
