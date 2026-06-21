@@ -49,6 +49,11 @@ export default function PrivacyPage() {
             run the service (e.g. IP address, device/log information) processed by our hosting and
             infrastructure providers for security, reliability, and abuse prevention.
           </li>
+          <li>
+            <span className="font-medium text-foreground">Push token</span> — if you enable push
+            notifications, we store a device push token used solely to deliver match reminders and
+            results. You can turn notifications off at any time in your device settings.
+          </li>
         </ul>
         <p className="text-muted-foreground mt-3">
           <span className="font-medium text-foreground">We do NOT</span> show third-party ads,
