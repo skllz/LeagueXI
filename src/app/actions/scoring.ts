@@ -2,8 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
+import { sendMatchScoredNotifications } from "@/lib/push"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -55,6 +57,17 @@ export async function updateMatchResult(
     revalidatePath("/matches")
     revalidatePath("/leaderboard")
     revalidatePath("/admin/results")
+
+    // Best-effort push to everyone who predicted this match. Runs after the
+    // response so it never delays or breaks result entry; no-op until the
+    // native app registers device tokens.
+    after(async () => {
+      try {
+        await sendMatchScoredNotifications(matchId)
+      } catch (e) {
+        console.error("[push] match-scored notify failed:", e)
+      }
+    })
 
     return { success: true }
   } catch (e) {
