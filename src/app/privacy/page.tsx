@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <div className="text-muted-foreground space-y-0.5">
           <p><span className="font-medium text-foreground">Effective date:</span> 20 June 2026</p>
           <p><span className="font-medium text-foreground">App:</span> LeagueXI (iOS &amp; Android) and the LeagueXI website.</p>
-          <p><span className="font-medium text-foreground">Operator:</span> QUADRILIZE LLC</p>
+          <p><span className="font-medium text-foreground">Operator:</span> Lani Q (independent developer)</p>
           <p><span className="font-medium text-foreground">Contact:</span> support@leaguexi.io</p>
         </div>
       </div>
