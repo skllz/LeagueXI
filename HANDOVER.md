@@ -1,6 +1,6 @@
 # LeagueXI — Living Handover Document (FULL DETAIL)
 
-> **LAST UPDATED:** 2026-06-15
+> **LAST UPDATED:** 2026-06-22
 > **STATUS:** Living document — kept current as work proceeds. Insurance against context loss, not a one-time export. **Nothing is intentionally summarized away; this is the complete record.**
 > **BUILT ON:** the Session-1 handover *"LeagueXI — Complete Session Handover Document, Generated June 10 2026"* (Sections 0–18), pasted by the owner at the start of Session 2. This doc **incorporates and supersedes** it; on conflict, this doc wins (carries Session-2 verifications).
 
@@ -29,6 +29,17 @@
 ---
 
 ## CHANGELOG
+
+### 2026-06-22 (k) — Password reset: fixed "lands on sign-in page" bug
+`GIT: 7f84b9a`. Root cause: reset emails used PKCE flow (`pkce_` token). PKCE requires the code verifier stored in browser cookies when `resetPasswordForEmail` was called — if the email opens in any other browser/email-client webview, the cookie is absent → `exchangeCodeForSession` fails → fell through to `/auth/login?error=auth_failed`.
+- **Fix (code):** `FILE: src/app/auth/callback/route.ts` — now handles both flows: `token_hash` + `type` params → `supabase.auth.verifyOtp()` (no cookie needed); `code` param → `exchangeCodeForSession()` (OAuth/Google still uses this). OTP type is validated against the Supabase-allowed set before calling.
+- **Fix (Supabase dashboard) — MUST DO:** Go to **Authentication → Email Templates → Reset Password** and replace the link with:
+  ```
+  {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password
+  ```
+  This routes the email link directly to our callback (bypassing Supabase's /auth/v1/verify endpoint) and passes `token_hash` — no PKCE verifier required. Until the template is changed, resets from email clients may still fail.
+- OAuth (Google sign-in) path is unchanged — still uses `code` + `exchangeCodeForSession`.
+- **Note on "email not found" feedback:** `resetPasswordForEmail` always returns success even if the email doesn't exist (user enumeration prevention). This is intentional — do not try to reveal whether an email is registered.
 
 ### 2026-06-20 (j) — Push notifications backend (match-scored)
 `GIT: merge 0734dd6` (branch `feat/push-notifications`). **Dormant until the native app registers tokens — safe to have merged.**
