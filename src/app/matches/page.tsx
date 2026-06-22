@@ -105,15 +105,25 @@ function computeMatchdayMap(groupMatches: MatchWithTeams[]): Map<string, 1 | 2 |
   return result
 }
 
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000
+
 function computeActiveMd(
   matchdays: { md: 1 | 2 | 3; firstKickoff: string; lastKickoff: string }[],
   nowMs: number
 ): 1 | 2 | 3 | null {
   let result: 1 | 2 | 3 | null = null
   for (const { md, firstKickoff, lastKickoff } of matchdays) {
-    const unlocked   = md === 1 || nowMs >= unlockTime(firstKickoff)
+    const unlocked    = md === 1 || nowMs >= unlockTime(firstKickoff)
     const hasUpcoming = nowMs < new Date(lastKickoff).getTime()
-    if (unlocked && hasUpcoming) result = md
+    if (!unlocked || !hasUpcoming) continue
+    if (result === null) {
+      // First eligible MD — always take it
+      result = md
+    } else if (nowMs >= new Date(firstKickoff).getTime() - TWELVE_HOURS_MS) {
+      // This MD's first game is within 12 h — switch focus to it
+      result = md
+    }
+    // MD is unlocked but first game is >12 h away — don't steal focus from the current MD
   }
   return result
 }

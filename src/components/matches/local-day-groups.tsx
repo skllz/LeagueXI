@@ -46,18 +46,32 @@ export function LocalDayGroups({ kicks, children }: LocalDayGroupsProps) {
 
   const groups = buildGroups(kicks, childArray, useLocal)
 
-  // The "active" day is the first one (chronologically) that still has an
-  // upcoming match. If every match has kicked off, fall back to the last day.
+  // Auto-expand rule (mirrors the 12-hour rule in computeActiveMd):
+  //  • Earliest upcoming kick is within 12 h → expand that day (action imminent).
+  //  • Earliest upcoming kick is >12 h away  → expand the most recently played day
+  //    (keeps focus on current results rather than a section that's days away).
+  //  • No played kicks yet                  → fall back to the earliest upcoming day.
+  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000
   const nowMs = now.getTime()
-  let activeKey: string | null = null
-  for (const g of groups) {
-    if (g.kickoffs.some(k => new Date(k).getTime() > nowMs)) {
-      activeKey = g.key
-      break
+
+  let earliestUpcomingMs: number | null = null
+  let latestPlayedMs: number | null = null
+  for (const k of kicks) {
+    const t = new Date(k).getTime()
+    if (t > nowMs) {
+      if (earliestUpcomingMs === null || t < earliestUpcomingMs) earliestUpcomingMs = t
+    } else {
+      if (latestPlayedMs === null || t > latestPlayedMs) latestPlayedMs = t
     }
   }
-  if (activeKey === null && groups.length > 0) {
-    activeKey = groups[groups.length - 1].key
+
+  let activeKey: string | null = null
+  if (earliestUpcomingMs !== null && earliestUpcomingMs - nowMs <= TWELVE_HOURS_MS) {
+    activeKey = new Date(earliestUpcomingMs).toLocaleDateString("en-CA")
+  } else if (latestPlayedMs !== null) {
+    activeKey = new Date(latestPlayedMs).toLocaleDateString("en-CA")
+  } else if (earliestUpcomingMs !== null) {
+    activeKey = new Date(earliestUpcomingMs).toLocaleDateString("en-CA")
   }
 
   // Display order: the matches page is for taking action (predicting), so days
