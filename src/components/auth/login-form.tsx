@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { sendPasswordReset } from "@/app/actions/auth"
 import { safeInternalPath } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,13 +45,9 @@ export function LoginForm() {
     }
     setLoading(true)
     setMessage(null)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Route through the server-side callback so PKCE code exchange happens
-      // server-side — avoids cookie mismatch when email opens in a new tab.
-      redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
-    })
-    if (error) {
-      setMessage({ text: error.message, ok: false })
+    const result = await sendPasswordReset(email)
+    if (result.error) {
+      setMessage({ text: result.error, ok: false })
     } else {
       setResetSent(true)
     }
