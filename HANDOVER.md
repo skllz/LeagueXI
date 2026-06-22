@@ -1,6 +1,6 @@
 # LeagueXI — Living Handover Document (FULL DETAIL)
 
-> **LAST UPDATED:** 2026-06-22
+> **LAST UPDATED:** 2026-06-22 (session continued)
 > **STATUS:** Living document — kept current as work proceeds. Insurance against context loss, not a one-time export. **Nothing is intentionally summarized away; this is the complete record.**
 > **BUILT ON:** the Session-1 handover *"LeagueXI — Complete Session Handover Document, Generated June 10 2026"* (Sections 0–18), pasted by the owner at the start of Session 2. This doc **incorporates and supersedes** it; on conflict, this doc wins (carries Session-2 verifications).
 
@@ -29,6 +29,15 @@
 ---
 
 ## CHANGELOG
+
+### 2026-06-22 (l) — Matches page: 12-hour rule for day-group auto-expand
+`GIT: 044c861`. Fixes MD3 stealing focus from MD2 the moment predictions unlock (48 h before first MD3 kickoff).
+- **Root cause (two layers):**
+  1. `computeActiveMd` in `FILE: src/app/matches/page.tsx` iterated all matchdays and kept the *last* unlocked+upcoming one — so MD3 won the moment it unlocked, making MD3's `MatchdayGroup` `defaultOpen=true` and collapsing MD2.
+  2. `activeKey` in `FILE: src/components/matches/local-day-groups.tsx` found the *first chronological* day group with any upcoming kick — so within MD3, the first MD3 day floated up and auto-expanded even though it was days away.
+- **Fix 1 — `computeActiveMd`:** Added `TWELVE_HOURS_MS = 12 * 60 * 60 * 1000`. Now only advances to a higher MD if its `firstKickoff` is within 12 h of now. Otherwise keeps the current (lower) MD as active. MD2 stays as `defaultOpen` until 12 h before MD3's first game.
+- **Fix 2 — `LocalDayGroups` `activeKey`:** Replaced the group-loop with a direct scan of `kicks`. If earliest upcoming kick ≤ 12 h away → expand that day. Else → expand most-recently-played day. Fallback (no played kicks yet) → expand earliest upcoming day.
+- Both layers use the same 12 h threshold for consistency.
 
 ### 2026-06-22 (k) — Password reset: fixed "lands on sign-in page" bug
 `GIT: c52e491` (4 commits: 7f84b9a → c52e491). **VERIFIED WORKING in production.**
