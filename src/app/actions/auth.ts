@@ -1,8 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createClient as createRawClient } from "@supabase/supabase-js"
 import { redirect } from "next/navigation"
 
 export async function signOut() {
@@ -19,28 +18,19 @@ export async function sendPasswordReset(
   email: string
 ): Promise<{ error?: string }> {
   try {
-    const cookieStore = await cookies()
-    // Implicit flow so resetPasswordForEmail generates a real OTP token hash
-    // (not a pkce_ code). The email template uses {{ .TokenHash }} which only
-    // works correctly when the token isn't PKCE-wrapped.
-    const supabase = createServerClient(
+    // @supabase/ssr hardcodes flowType:"pkce" and ignores any override, so we
+    // use the raw supabase-js client here with implicit flow. This makes
+    // resetPasswordForEmail generate a real OTP token hash (not a pkce_ code),
+    // which our /auth/callback can verify with verifyOtp({ token_hash }).
+    const supabase = createRawClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: { flowType: "implicit" },
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet) => {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {}
-          },
-        },
-      }
+      { auth: { flowType: "implicit" } }
     )
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.leaguexi.io"
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
+    })
     if (error) return { error: error.message }
     return {}
   } catch (e) {
