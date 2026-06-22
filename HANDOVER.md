@@ -31,15 +31,14 @@
 ## CHANGELOG
 
 ### 2026-06-22 (k) — Password reset: fixed "lands on sign-in page" bug
-`GIT: 7f84b9a`. Root cause: reset emails used PKCE flow (`pkce_` token). PKCE requires the code verifier stored in browser cookies when `resetPasswordForEmail` was called — if the email opens in any other browser/email-client webview, the cookie is absent → `exchangeCodeForSession` fails → fell through to `/auth/login?error=auth_failed`.
-- **Fix (code):** `FILE: src/app/auth/callback/route.ts` — now handles both flows: `token_hash` + `type` params → `supabase.auth.verifyOtp()` (no cookie needed); `code` param → `exchangeCodeForSession()` (OAuth/Google still uses this). OTP type is validated against the Supabase-allowed set before calling.
-- **Fix (Supabase dashboard) — MUST DO:** Go to **Authentication → Email Templates → Reset Password** and replace the link with:
-  ```
-  {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password
-  ```
-  This routes the email link directly to our callback (bypassing Supabase's /auth/v1/verify endpoint) and passes `token_hash` — no PKCE verifier required. Until the template is changed, resets from email clients may still fail.
-- OAuth (Google sign-in) path is unchanged — still uses `code` + `exchangeCodeForSession`.
-- **Note on "email not found" feedback:** `resetPasswordForEmail` always returns success even if the email doesn't exist (user enumeration prevention). This is intentional — do not try to reveal whether an email is registered.
+`GIT: c52e491` (4 commits: 7f84b9a → c52e491). **VERIFIED WORKING in production.**
+- **Root cause:** `resetPasswordForEmail` was called from a PKCE-configured browser client → email link contained `pkce_` token → `{{ .TokenHash }}` in the email template also output the PKCE code → `verifyOtp()` rejected it → fell through to `/auth/login?error=auth_failed`. Affected any browser/email-client that wasn't the one that initiated the reset.
+- **Fix 1 — callback (`FILE: src/app/auth/callback/route.ts`):** now handles both flows: `token_hash` + `type` params → `supabase.auth.verifyOtp()` (no PKCE cookie needed); `code` param → `exchangeCodeForSession()` (OAuth/Google unchanged).
+- **Fix 2 — email sender (`FILE: src/app/actions/auth.ts`):** new `sendPasswordReset(email)` server action uses raw `@supabase/supabase-js` client (NOT `@supabase/ssr`) with `auth: { flowType: 'implicit' }`. Reason: `@supabase/ssr`'s `createServerClient` hardcodes `flowType:"pkce"` after spreading options, silently overriding any `implicit` setting — raw client is the only escape.
+- **Fix 3 — Supabase dashboard (DONE):** Authentication → Email Templates → Reset Password link changed to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password`. With implicit flow, `{{ .TokenHash }}` now generates a proper hex hash.
+- **login-form.tsx** updated to call `sendPasswordReset` server action instead of `supabase.auth.resetPasswordForEmail` directly.
+- **Note on "email not found":** `resetPasswordForEmail` always returns success regardless of whether the email exists (user enumeration prevention). Do not change this behaviour.
+- **GOTCHA — always push to GitHub:** Vercel deploys from GitHub. Local commits do nothing until `git push origin main`.
 
 ### 2026-06-20 (j) — Push notifications backend (match-scored)
 `GIT: merge 0734dd6` (branch `feat/push-notifications`). **Dormant until the native app registers tokens — safe to have merged.**
