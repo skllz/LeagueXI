@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LeagueCard } from "@/components/leagues/league-card"
 import { EditUsernameForm } from "@/components/profile/edit-username-form"
+import { SetPasswordForm } from "@/components/profile/set-password-form"
 import { Trophy } from "lucide-react"
 
 export const revalidate = 0
@@ -54,6 +55,12 @@ export default async function ProfilePage() {
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Username</h2>
         <EditUsernameForm userId={user.id} currentUsername={profile.username ?? ""} />
+      </div>
+
+      {/* Password */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Password</h2>
+        <SetPasswordForm />
       </div>
 
       {/* My leagues */}
