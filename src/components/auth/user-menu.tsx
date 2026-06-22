@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { signOut } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +66,11 @@ export function UserMenu({ username, avatarUrl, isAdmin }: UserMenuProps) {
 }
 
 export function SignInButton() {
+  // Hide on the login page itself — otherwise it's a dead button (it links to
+  // the page you're already on, so it can't reset the form's internal state,
+  // e.g. the password-reset "check your inbox" screen).
+  const pathname = usePathname()
+  if (pathname === "/auth/login") return null
   return (
     <Button asChild size="sm">
       <Link href="/auth/login">Sign in</Link>

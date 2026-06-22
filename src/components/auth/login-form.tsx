@@ -169,6 +169,17 @@ export function LoginForm() {
             className="bg-card border-border"
           />
         </div>
+        {!isSignUp && (
+          <div className="flex justify-end -mt-1">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-xs text-[var(--green)] hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
         {message && (
           <p className={`text-xs ${message.ok ? "text-[var(--green)]" : "text-destructive"}`}>
             {message.text}
@@ -186,14 +197,6 @@ export function LoginForm() {
         >
           {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
         </p>
-        {!isSignUp && (
-          <p
-            className="text-xs text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-            onClick={handleForgotPassword}
-          >
-            Forgot password?
-          </p>
-        )}
       </div>
     </div>
   )
