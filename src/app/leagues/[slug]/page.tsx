@@ -93,15 +93,16 @@ export default async function LeaguePage({
     )
   }
 
-  // Resolve the competition for prediction + leaderboard filtering:
-  // use the league's own competition_id; if null, fall back to the active competition.
+  // Resolve the competition for prediction + leaderboard filtering.
+  // Post-WC: leagues.competition_id was dropped — leagues are no longer tied to a
+  // single competition. Fall back to the active competition for filtering.
   const { data: activeComp } = await supabase
     .from("competitions")
     .select("id")
     .eq("is_active", true)
     .maybeSingle()
 
-  const competitionId = league.competition_id ?? activeComp?.id ?? null
+  const competitionId = activeComp?.id ?? null
 
   // Fetch leaderboard — pass competition so scores match the Predictions tab
   const { data: leaderboardRows } = await supabase.rpc("get_league_leaderboard", {

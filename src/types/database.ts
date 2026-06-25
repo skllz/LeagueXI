@@ -1,3 +1,9 @@
+// ⚠️ Post-WC (Phase 1) hand-edited to match the renamed schema in
+// supabase/migrations/post-wc/. The live DB is NOT yet migrated. Before cutover,
+// REGENERATE this file from the migrated (staging) database:
+//   npx supabase gen types typescript --project-id <id> > src/types/database.ts
+// Do not rely on hand edits long-term.
+
 export type Json =
   | string
   | number
@@ -47,6 +53,8 @@ export type Database = {
           starts_at: string
           ends_at: string
           is_active: boolean
+          type: "domestic_league" | "domestic_cup" | "european" | "international" | null
+          country: string | null
         }
         Insert: {
           id?: string
@@ -56,6 +64,8 @@ export type Database = {
           starts_at: string
           ends_at: string
           is_active?: boolean
+          type?: "domestic_league" | "domestic_cup" | "european" | "international" | null
+          country?: string | null
         }
         Update: {
           name?: string
@@ -64,6 +74,8 @@ export type Database = {
           starts_at?: string
           ends_at?: string
           is_active?: boolean
+          type?: "domestic_league" | "domestic_cup" | "european" | "international" | null
+          country?: string | null
         }
         Relationships: []
       }
@@ -90,17 +102,36 @@ export type Database = {
         }
         Relationships: []
       }
-      matches: {
+      fixtures: {
         Row: {
           id: string
           competition_id: string
           home_team_id: string
           away_team_id: string
-          kickoff_at: string
-          status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+          kickoff_datetime_utc: string
+          status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
           home_score: number | null
           away_score: number | null
           round: string | null
+          round_id: string | null
+          season_id: string | null
+          competition_name: string | null
+          competition_type: string | null
+          season_label: string | null
+          is_friendly: boolean | null
+          is_competitive: boolean | null
+          is_included: boolean | null
+          inclusion_source:
+            | "allowlist"
+            | "blocklist"
+            | "admin_override"
+            | "manual_import"
+            | "provider_sync"
+            | "unclassified"
+            | null
+          admin_include_override: boolean | null
+          admin_exclude_override: boolean | null
+          last_synced_at: string | null
           created_at: string
           updated_at: string
         }
@@ -109,38 +140,76 @@ export type Database = {
           competition_id: string
           home_team_id: string
           away_team_id: string
-          kickoff_at: string
-          status?: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+          kickoff_datetime_utc: string
+          status?: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
           home_score?: number | null
           away_score?: number | null
           round?: string | null
+          round_id?: string | null
+          season_id?: string | null
+          competition_name?: string | null
+          competition_type?: string | null
+          season_label?: string | null
+          is_friendly?: boolean | null
+          is_competitive?: boolean | null
+          is_included?: boolean | null
+          inclusion_source?:
+            | "allowlist"
+            | "blocklist"
+            | "admin_override"
+            | "manual_import"
+            | "provider_sync"
+            | "unclassified"
+            | null
+          admin_include_override?: boolean | null
+          admin_exclude_override?: boolean | null
+          last_synced_at?: string | null
         }
         Update: {
           competition_id?: string
           home_team_id?: string
           away_team_id?: string
-          kickoff_at?: string
-          status?: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+          kickoff_datetime_utc?: string
+          status?: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
           home_score?: number | null
           away_score?: number | null
           round?: string | null
+          round_id?: string | null
+          season_id?: string | null
+          competition_name?: string | null
+          competition_type?: string | null
+          season_label?: string | null
+          is_friendly?: boolean | null
+          is_competitive?: boolean | null
+          is_included?: boolean | null
+          inclusion_source?:
+            | "allowlist"
+            | "blocklist"
+            | "admin_override"
+            | "manual_import"
+            | "provider_sync"
+            | "unclassified"
+            | null
+          admin_include_override?: boolean | null
+          admin_exclude_override?: boolean | null
+          last_synced_at?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "matches_competition_id_fkey"
+            foreignKeyName: "fixtures_competition_id_fkey"
             columns: ["competition_id"]
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matches_home_team_id_fkey"
+            foreignKeyName: "fixtures_home_team_id_fkey"
             columns: ["home_team_id"]
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matches_away_team_id_fkey"
+            foreignKeyName: "fixtures_away_team_id_fkey"
             columns: ["away_team_id"]
             referencedRelation: "teams"
             referencedColumns: ["id"]
@@ -151,7 +220,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          match_id: string
+          fixture_id: string
           predicted_home_score: number
           predicted_away_score: number
           points: number | null
@@ -162,7 +231,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          match_id: string
+          fixture_id: string
           predicted_home_score: number
           predicted_away_score: number
           points?: number | null
@@ -183,9 +252,9 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "predictions_match_id_fkey"
-            columns: ["match_id"]
-            referencedRelation: "matches"
+            foreignKeyName: "predictions_fixture_id_fkey"
+            columns: ["fixture_id"]
+            referencedRelation: "fixtures"
             referencedColumns: ["id"]
           }
         ]
@@ -193,8 +262,7 @@ export type Database = {
       leagues: {
         Row: {
           id: string
-          competition_id: string | null
-          owner_id: string
+          creator_user_id: string
           name: string
           slug: string
           invite_code: string
@@ -208,8 +276,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          competition_id?: string | null
-          owner_id: string
+          creator_user_id: string
           name: string
           slug: string
           invite_code: string
@@ -222,7 +289,7 @@ export type Database = {
         Update: {
           name?: string
           slug?: string
-          owner_id?: string
+          creator_user_id?: string
           description?: string | null
           visibility?: "public" | "private"
           logo_url?: string | null
@@ -237,18 +304,21 @@ export type Database = {
           id: string
           league_id: string
           user_id: string
-          role: "owner" | "member"
+          role: "owner" | "admin" | "member"
+          status: "active" | "removed" | "left"
           joined_at: string
         }
         Insert: {
           id?: string
           league_id: string
           user_id: string
-          role?: "owner" | "member"
+          role?: "owner" | "admin" | "member"
+          status?: "active" | "removed" | "left"
           joined_at?: string
         }
         Update: {
-          role?: "owner" | "member"
+          role?: "owner" | "admin" | "member"
+          status?: "active" | "removed" | "left"
         }
         Relationships: [
           {
@@ -301,7 +371,7 @@ export type Database = {
           p_competition_id?: string | null
         }
         Returns: {
-          match_id: string
+          fixture_id: string
           kickoff_at: string
           status: string
           home_score: number | null
@@ -331,8 +401,7 @@ export type Database = {
           visibility: "public" | "private"
           prize_description: string | null
           is_archived: boolean
-          owner_id: string
-          competition_id: string | null
+          creator_user_id: string
         }[]
       }
       get_league_by_invite_code: {

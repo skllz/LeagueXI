@@ -26,10 +26,10 @@ export async function createMatch(data: {
 
     if (data.home_team_id === data.away_team_id) return { error: "Home and away teams must be different" }
 
-    const { error } = await supabase.from("matches").insert({
+    const { error } = await supabase.from("fixtures").insert({
       home_team_id: data.home_team_id,
       away_team_id: data.away_team_id,
-      kickoff_at: data.kickoff_at,
+      kickoff_datetime_utc: data.kickoff_at,
       competition_id: data.competition_id,
       status: "scheduled",
     })
@@ -74,10 +74,10 @@ export async function importFixturesCSV(
       const kickoff = new Date(row.kickoff_at)
       if (isNaN(kickoff.getTime())) { errors.push(`Row ${i + 1}: invalid date "${row.kickoff_at}"`); continue }
 
-      const { error } = await supabase.from("matches").insert({
+      const { error } = await supabase.from("fixtures").insert({
         home_team_id: homeId,
         away_team_id: awayId,
-        kickoff_at: kickoff.toISOString(),
+        kickoff_datetime_utc: kickoff.toISOString(),
         competition_id: competitionId,
         status: "scheduled",
       })
@@ -103,16 +103,16 @@ export async function deleteMatch(matchId: string, force = false): Promise<{ err
     // Guard: refuse to silently wipe scored data unless the caller explicitly confirms
     if (!force) {
       const { data: match } = await supabase
-        .from("matches")
+        .from("fixtures")
         .select("status")
         .eq("id", matchId)
         .single()
-      if (match?.status === "live" || match?.status === "completed") {
-        return { error: `Match is ${match.status} — deleting it will erase all predictions and scores. Call deleteMatch with force=true to confirm.` }
+      if (match?.status === "live" || match?.status === "finished") {
+        return { error: `Fixture is ${match.status} — deleting it will erase all predictions and scores. Call deleteMatch with force=true to confirm.` }
       }
     }
 
-    const { error } = await supabase.from("matches").delete().eq("id", matchId)
+    const { error } = await supabase.from("fixtures").delete().eq("id", matchId)
     if (error) return { error: error.message }
     revalidatePath("/matches")
     revalidatePath("/admin/fixtures")

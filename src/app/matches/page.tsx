@@ -16,7 +16,7 @@ export const revalidate = 60
 type MatchWithTeams = {
   id: string
   kickoff_at: string
-  status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+  status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
   home_score: number | null
   away_score: number | null
   round: string | null
@@ -152,16 +152,19 @@ export default async function MatchesPage() {
     )
   }
 
+  // Post-WC: table renamed matches → fixtures and kickoff_at → kickoff_datetime_utc.
+  // The returned field is aliased back to `kickoff_at` so this WC display layer and
+  // the shared date helpers keep working unchanged.
   const { data: rawMatches } = await supabase
-    .from("matches")
+    .from("fixtures")
     .select(`
-      id, kickoff_at, status, home_score, away_score, round,
-      home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
-      away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
+      id, kickoff_at:kickoff_datetime_utc, status, home_score, away_score, round,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, short_name, country, logo_url),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, short_name, country, logo_url)
     `)
     .eq("competition_id", competition.id)
     .not("status", "eq", "cancelled")
-    .order("kickoff_at", { ascending: true })
+    .order("kickoff_datetime_utc", { ascending: true })
 
   const matches = (rawMatches ?? []) as unknown as MatchWithTeams[]
 
@@ -188,12 +191,12 @@ export default async function MatchesPage() {
   if (user) {
     const { data: predictions } = await supabase
       .from("predictions")
-      .select("match_id, predicted_home_score, predicted_away_score, points, is_locked")
+      .select("fixture_id, predicted_home_score, predicted_away_score, points, is_locked")
       .eq("user_id", user.id)
-      .in("match_id", matches.map(m => m.id))
+      .in("fixture_id", matches.map(m => m.id))
 
     for (const p of predictions ?? []) {
-      predictionMap[p.match_id] = p
+      predictionMap[p.fixture_id] = p
     }
   }
 

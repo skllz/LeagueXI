@@ -10,7 +10,7 @@ import { createClient } from "@supabase/supabase-js"
 //
 // Flow: verify the token → who it belongs to → run the transactional league
 // pre-work RPC (reassign/delete owned leagues BEFORE deletion, since
-// leagues.owner_id is ON DELETE CASCADE) → delete the auth user via the Auth
+// leagues.creator_user_id is ON DELETE CASCADE)→ delete the auth user via the Auth
 // admin API (cascades profile → predictions, memberships).
 //
 // Untyped Supabase clients on purpose: the admin client uses the service-role

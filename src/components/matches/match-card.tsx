@@ -24,7 +24,7 @@ interface MatchCardProps {
   match: {
     id: string
     kickoff_at: string
-    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+    status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
     home_score: number | null
     away_score: number | null
     home_team: Team
@@ -36,7 +36,7 @@ interface MatchCardProps {
 
 export function MatchCard({ match, prediction, isLoggedIn }: MatchCardProps) {
   const locked = !isBeforeKickoff(match.kickoff_at) || match.status !== "scheduled"
-  const isCompleted = match.status === "completed"
+  const isCompleted = match.status === "finished"
   const isLive = match.status === "live"
   const isPostponed = match.status === "postponed"
 

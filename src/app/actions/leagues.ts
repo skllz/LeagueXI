@@ -79,7 +79,7 @@ export async function createLeague(formData: FormData): Promise<{ error?: string
     const { data: league, error: insertError } = await supabase
       .from("leagues")
       .insert({
-        owner_id: user.id,
+        creator_user_id: user.id,
         name,
         slug,
         invite_code: inviteCode,
@@ -232,7 +232,7 @@ export async function archiveLeague(leagueId: string, leagueSlug: string): Promi
       .from("leagues")
       .update({ is_archived: true })
       .eq("id", leagueId)
-      .eq("owner_id", user.id)
+      .eq("creator_user_id", user.id)
       .select("id")
       .single()
 
@@ -257,7 +257,7 @@ export async function unarchiveLeague(leagueId: string, leagueSlug: string): Pro
       .from("leagues")
       .update({ is_archived: false })
       .eq("id", leagueId)
-      .eq("owner_id", user.id)
+      .eq("creator_user_id", user.id)
       .select("id")
       .single()
 
@@ -286,7 +286,7 @@ export async function removeMember(
       .from("leagues")
       .select("id")
       .eq("id", leagueId)
-      .eq("owner_id", user.id)
+      .eq("creator_user_id", user.id)
       .single()
 
     if (!ownerCheck) return { error: "Not authorised" }
@@ -325,7 +325,7 @@ export async function transferOwnership(
       .single()
 
     // Single atomic SECURITY DEFINER function — handles all three DB steps and
-    // authorises on either leagues.owner_id OR league_members.role = 'owner',
+    // authorises on either leagues.creator_user_id OR league_members.role = 'owner',
     // so it also recovers from any split-state caused by the old RLS approach.
     const { data: result, error: fnError } = await supabase.rpc(
       "transfer_league_ownership",
@@ -367,7 +367,7 @@ export async function updateLeague(
       updates.prize_description = updates.prize_description.trim() || null
     }
 
-    // Explicitly whitelist updatable fields — prevents slug/owner_id injection
+    // Explicitly whitelist updatable fields — prevents slug/creator_user_id injection
     // if this action is ever called with a spread of unknown data.
     const safeUpdates: {
       updated_at: string
@@ -385,7 +385,7 @@ export async function updateLeague(
       .from("leagues")
       .update(safeUpdates)
       .eq("id", leagueId)
-      .eq("owner_id", user.id)
+      .eq("creator_user_id", user.id)
       .select("id")
       .single()
 

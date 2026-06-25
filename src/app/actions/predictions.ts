@@ -23,14 +23,14 @@ export async function upsertPrediction(
     if (profile?.is_admin) return { error: "Admin accounts cannot submit predictions" }
 
     const { data: match } = await supabase
-      .from("matches")
-      .select("kickoff_at, status")
+      .from("fixtures")
+      .select("kickoff_datetime_utc, status")
       .eq("id", matchId)
       .single()
 
-    if (!match) return { error: "Match not found" }
-    if (new Date(match.kickoff_at) < new Date()) return { error: "This match has already kicked off" }
-    if (match.status !== "scheduled") return { error: "Predictions are locked for this match" }
+    if (!match) return { error: "Fixture not found" }
+    if (new Date(match.kickoff_datetime_utc) < new Date()) return { error: "This fixture has already kicked off" }
+    if (match.status !== "scheduled") return { error: "Predictions are locked for this fixture" }
 
     if (
       !Number.isInteger(predictedHomeScore) ||
@@ -48,11 +48,11 @@ export async function upsertPrediction(
       .upsert(
         {
           user_id: user.id,
-          match_id: matchId,
+          fixture_id: matchId,
           predicted_home_score: predictedHomeScore,
           predicted_away_score: predictedAwayScore,
         },
-        { onConflict: "user_id,match_id" }
+        { onConflict: "user_id,fixture_id" }
       )
 
     if (error) return { error: error.message }
@@ -75,20 +75,20 @@ export async function deletePrediction(
     if (!user) return { error: "Not authenticated" }
 
     const { data: match } = await supabase
-      .from("matches")
-      .select("kickoff_at, status")
+      .from("fixtures")
+      .select("kickoff_datetime_utc, status")
       .eq("id", matchId)
       .single()
 
-    if (!match) return { error: "Match not found" }
-    if (new Date(match.kickoff_at) <= new Date()) return { error: "Cannot remove prediction after kickoff" }
-    if (match.status !== "scheduled") return { error: "Predictions are locked for this match" }
+    if (!match) return { error: "Fixture not found" }
+    if (new Date(match.kickoff_datetime_utc) <= new Date()) return { error: "Cannot remove prediction after kickoff" }
+    if (match.status !== "scheduled") return { error: "Predictions are locked for this fixture" }
 
     const { error } = await supabase
       .from("predictions")
       .delete()
       .eq("user_id", user.id)
-      .eq("match_id", matchId)
+      .eq("fixture_id", matchId)
 
     if (error) return { error: error.message }
 

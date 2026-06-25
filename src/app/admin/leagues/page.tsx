@@ -8,7 +8,7 @@ export default async function AdminLeaguesPage() {
 
   const { data: leagues } = await supabase
     .from("leagues")
-    .select("id, name, slug, visibility, is_archived, owner_id")
+    .select("id, name, slug, visibility, is_archived, creator_user_id")
     .order("created_at", { ascending: false })
 
   // Get member counts
@@ -24,7 +24,7 @@ export default async function AdminLeaguesPage() {
   }
 
   // Get owner usernames
-  const ownerIds = [...new Set((leagues ?? []).map((l) => l.owner_id))]
+  const ownerIds = [...new Set((leagues ?? []).map((l) => l.creator_user_id))]
   const { data: owners } = await supabase
     .from("profiles")
     .select("id, username")
@@ -37,7 +37,7 @@ export default async function AdminLeaguesPage() {
     ...l,
     visibility: l.visibility as "public" | "private",
     member_count: countMap[l.id] ?? 0,
-    owner_username: ownerMap[l.owner_id] ?? null,
+    owner_username: ownerMap[l.creator_user_id] ?? null,
   }))
 
   return (

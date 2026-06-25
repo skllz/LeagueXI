@@ -49,9 +49,9 @@ export async function sendMatchScoredNotifications(matchId: string): Promise<voi
   if (!sb) return
 
   const { data: match } = await sb
-    .from("matches")
+    .from("fixtures")
     .select(
-      "home_score, away_score, home_team:teams!matches_home_team_id_fkey(short_name), away_team:teams!matches_away_team_id_fkey(short_name)"
+      "home_score, away_score, home_team:teams!fixtures_home_team_id_fkey(short_name), away_team:teams!fixtures_away_team_id_fkey(short_name)"
     )
     .eq("id", matchId)
     .single()
@@ -60,7 +60,7 @@ export async function sendMatchScoredNotifications(matchId: string): Promise<voi
   const { data: preds } = await sb
     .from("predictions")
     .select("user_id, points")
-    .eq("match_id", matchId)
+    .eq("fixture_id", matchId)
   if (!preds || preds.length === 0) return
 
   const userIds = [...new Set(preds.map((p) => p.user_id))]

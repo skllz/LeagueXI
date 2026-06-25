@@ -42,14 +42,14 @@ export async function updateMatchResult(
     // Chain .select() so we can detect RLS-silent failures:
     // if RLS blocks the UPDATE, Supabase returns no error but also no data.
     const { data: updatedMatch, error: matchError } = await supabase
-      .from("matches")
-      .update({ home_score: homeScore, away_score: awayScore, status: "completed" })
+      .from("fixtures")
+      .update({ home_score: homeScore, away_score: awayScore, status: "finished" })
       .eq("id", matchId)
       .select("id, home_score, away_score")
       .single()
 
     if (matchError) return { error: matchError.message }
-    if (!updatedMatch) return { error: "Match update was blocked — verify admin RLS policy on matches table" }
+    if (!updatedMatch) return { error: "Fixture update was blocked — verify admin RLS policy on fixtures table" }
 
     const calcError = await recalculatePredictions(supabase, matchId, homeScore, awayScore)
     if (calcError) return { error: calcError }
@@ -82,14 +82,14 @@ export async function setMatchLive(matchId: string): Promise<{ error?: string; s
     if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
     const { data: updatedMatch, error } = await supabase
-      .from("matches")
+      .from("fixtures")
       .update({ status: "live" })
       .eq("id", matchId)
       .select("id")
       .single()
 
     if (error) return { error: error.message }
-    if (!updatedMatch) return { error: "Match update blocked — check admin RLS policy on matches table" }
+    if (!updatedMatch) return { error: "Fixture update blocked — check admin RLS policy on fixtures table" }
 
     revalidatePath("/matches")
     revalidatePath("/admin/results")
@@ -106,14 +106,14 @@ export async function recalculateMatch(matchId: string): Promise<{ error?: strin
     if (authError || !supabase) return { error: authError ?? "Auth failed" }
 
     const { data: match } = await supabase
-      .from("matches")
+      .from("fixtures")
       .select("home_score, away_score, status")
       .eq("id", matchId)
       .single()
 
-    if (!match) return { error: "Match not found" }
-    if (match.status !== "completed") return { error: "Match is not completed" }
-    if (match.home_score === null || match.away_score === null) return { error: "Match has no score" }
+    if (!match) return { error: "Fixture not found" }
+    if (match.status !== "finished") return { error: "Fixture is not finished" }
+    if (match.home_score === null || match.away_score === null) return { error: "Fixture has no score" }
 
     const calcError = await recalculatePredictions(supabase, matchId, match.home_score, match.away_score)
     if (calcError) return { error: calcError }

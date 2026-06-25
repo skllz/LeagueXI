@@ -11,7 +11,7 @@ import { CalendarDays, Info, Lock, Clock, ChevronDown, ChevronRight } from "luci
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PredictionRow = {
-  match_id: string
+  fixture_id: string
   kickoff_at: string
   status: string
   home_score: number | null
@@ -38,7 +38,7 @@ type Member = {
 }
 
 type MatchGroup = {
-  match_id: string
+  fixture_id: string
   kickoff_at: string
   status: string
   home_score: number | null
@@ -84,9 +84,9 @@ export function LeaguePredictions({
   // Group prediction rows by match
   const matchMap = new Map<string, MatchGroup>()
   for (const row of rows) {
-    if (!matchMap.has(row.match_id)) {
-      matchMap.set(row.match_id, {
-        match_id: row.match_id,
+    if (!matchMap.has(row.fixture_id)) {
+      matchMap.set(row.fixture_id, {
+        fixture_id: row.fixture_id,
         kickoff_at: row.kickoff_at,
         status: row.status,
         home_score: row.home_score,
@@ -105,7 +105,7 @@ export function LeaguePredictions({
         predictions: [],
       })
     }
-    matchMap.get(row.match_id)!.predictions.push(row)
+    matchMap.get(row.fixture_id)!.predictions.push(row)
   }
 
   const allMatches = Array.from(matchMap.values())
@@ -119,7 +119,7 @@ export function LeaguePredictions({
     pastKickoff.length > 0
       ? pastKickoff.reduce((latest, m) =>
           m.kickoff_at > latest.kickoff_at ? m : latest
-        ).match_id
+        ).fixture_id
       : null
 
   // Group matches by LOCAL calendar date (browser timezone — we're a client component)
@@ -215,15 +215,15 @@ export function LeaguePredictions({
 
                 return isPastKickoff ? (
                   <CompletedMatchCard
-                    key={match.match_id}
+                    key={match.fixture_id}
                     match={match}
                     currentUserId={currentUserId}
                     members={members}
-                    defaultOpen={match.match_id === defaultExpandedId}
+                    defaultOpen={match.fixture_id === defaultExpandedId}
                   />
                 ) : (
                   <UpcomingMatchRow
-                    key={match.match_id}
+                    key={match.fixture_id}
                     match={match}
                     myPrediction={match.predictions.find((p) => p.user_id === currentUserId) ?? null}
                   />
@@ -259,7 +259,7 @@ function CompletedMatchCard({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const isLive = match.status === "live"
-  const isCompleted = match.status === "completed"
+  const isCompleted = match.status === "finished"
   const localTime = new Date(match.kickoff_at).toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",

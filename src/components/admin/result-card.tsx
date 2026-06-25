@@ -21,7 +21,7 @@ interface ResultCardProps {
   match: {
     id: string
     kickoff_at: string
-    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+    status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
     home_score: number | null
     away_score: number | null
     home_team: Team
@@ -78,7 +78,7 @@ export function ResultCard({ match }: ResultCardProps) {
     setLoading(false)
   }
 
-  const isCompleted = match.status === "completed"
+  const isCompleted = match.status === "finished"
 
   return (
     <div className={cn(
@@ -91,11 +91,11 @@ export function ResultCard({ match }: ResultCardProps) {
         <span className={cn(
           "text-xs font-semibold px-2 py-0.5 rounded-full",
           match.status === "live" ? "bg-[var(--green)] text-white" :
-          match.status === "completed" ? "bg-secondary text-muted-foreground" :
+          match.status === "finished" ? "bg-secondary text-muted-foreground" :
           "bg-yellow-600/20 text-yellow-400"
         )}>
           {match.status === "live" ? "Live" :
-           match.status === "completed" ? "FT" :
+           match.status === "finished" ? "FT" :
            "Awaiting result"}
         </span>
       </div>

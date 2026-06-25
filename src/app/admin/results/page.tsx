@@ -16,18 +16,20 @@ export default async function AdminResultsPage({
   const supabase = await createClient()
 
   // In test mode: show all matches. Normally: only matches that have kicked off.
+  // Post-WC: matches → fixtures, kickoff_at → kickoff_datetime_utc (aliased back
+  // to kickoff_at so the card components keep working unchanged).
   let query = supabase
-    .from("matches")
+    .from("fixtures")
     .select(`
-      id, kickoff_at, status, home_score, away_score,
-      home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
-      away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
+      id, kickoff_at:kickoff_datetime_utc, status, home_score, away_score,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, short_name, country, logo_url),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, short_name, country, logo_url)
     `)
     .not("status", "eq", "cancelled")
-    .order("kickoff_at", { ascending: false })
+    .order("kickoff_datetime_utc", { ascending: false })
 
   if (!testMode) {
-    query = query.lte("kickoff_at", new Date().toISOString())
+    query = query.lte("kickoff_datetime_utc", new Date().toISOString())
   }
 
   const { data: rawMatches } = await query
@@ -35,15 +37,15 @@ export default async function AdminResultsPage({
   const matches = (rawMatches ?? []) as unknown as Array<{
     id: string
     kickoff_at: string
-    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+    status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
     home_score: number | null
     away_score: number | null
     home_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
     away_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
   }>
 
-  const pending = matches.filter((m) => m.status !== "completed")
-  const completed = matches.filter((m) => m.status === "completed")
+  const pending = matches.filter((m) => m.status !== "finished")
+  const completed = matches.filter((m) => m.status === "finished")
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">

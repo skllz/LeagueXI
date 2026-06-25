@@ -13,20 +13,20 @@ export default async function AdminFixturesPage() {
     supabase.from("teams").select("id, name, short_name").order("name"),
     supabase.from("competitions").select("id, name").eq("is_active", true),
     supabase
-      .from("matches")
+      .from("fixtures")
       .select(`
-        id, kickoff_at, status, home_score, away_score,
-        home_team:teams!matches_home_team_id_fkey(id, name, short_name, country, logo_url),
-        away_team:teams!matches_away_team_id_fkey(id, name, short_name, country, logo_url)
+        id, kickoff_at:kickoff_datetime_utc, status, home_score, away_score,
+        home_team:teams!fixtures_home_team_id_fkey(id, name, short_name, country, logo_url),
+        away_team:teams!fixtures_away_team_id_fkey(id, name, short_name, country, logo_url)
       `)
-      .order("kickoff_at", { ascending: true })
+      .order("kickoff_datetime_utc", { ascending: true })
       .limit(200),
   ])
 
   const matches = (rawMatches ?? []) as unknown as Array<{
     id: string
     kickoff_at: string
-    status: "scheduled" | "live" | "completed" | "postponed" | "cancelled"
+    status: "scheduled" | "live" | "finished" | "postponed" | "abandoned" | "cancelled"
     home_score: number | null
     away_score: number | null
     home_team: { id: string; name: string; short_name: string; country: string; logo_url: string | null }
