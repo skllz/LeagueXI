@@ -99,3 +99,27 @@ Decision: Add a minimal isolated Vitest setup scoped to pure provider logic only
 Reason: Test the high-value pure logic without a DB/network; keep provider specifics sealed.
 Impact: `vitest.config.ts`, `test` script, 20 passing tests.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 4 owns round status transitions draft→open→in_progress→pending_finalization (via `advanceRoundLifecycle`, called by both crons). Terminal →finalized stays Phase 5.
+Reason: Predict-current-round-only requires the current round to be opened; transitions are time/fixture driven and belong with sync.
+Impact: `rounds.ts`; `new_round_opened` (Phase 8) hooks the returned `opened[]` list.
+Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Prevent overlapping cron executions with a TTL lease (`sync_locks` table) whose CLAIM is made atomic by `pg_advisory_xact_lock`; release in `finally`, TTL self-heals on crash. Not a pure session advisory lock (unreliable across supabase-js pooled connections for a network-bound job).
+Reason: Idempotency backstop for double-fired / overlapping crons.
+Impact: `0013_sync_locks.sql` (+ `claim_sync_slot`/`release_sync_slot`), `src/lib/cron/lock.ts`.
+Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 4 may score fixtures but sends NO push notifications; leave a transition-gated extension point for Phase 8. Crons are built now but activate only at cutover (production deploy from main); 15-min cadence needs Vercel Pro; tested manually on staging.
+Reason: Keep notification work in Phase 8; avoid activating production crons during the build.
+Impact: `result-sync.ts` returns `scoredFixtureIds` with a marked Phase 8 hook; `vercel.json` committed but dormant.
+Status: Approved
