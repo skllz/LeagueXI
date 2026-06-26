@@ -4,8 +4,8 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — post-WC build phases 1–4 implemented & committed on `post-wc`;
-Phase 5 not started. No migrations executed; nothing deployed; not pushed.
+**In Progress** — post-WC build phases 1–5 implemented & committed on `post-wc`;
+Phase 6 not started. No migrations executed; nothing deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -14,67 +14,70 @@ Phase 5 not started. No migrations executed; nothing deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 4 — sync cron jobs (steps 26–27).** Two Vercel Cron route handlers
-(`/api/cron/fixture-discovery` 12h, `/api/cron/result-sync` 15m) + services:
-`rounds.advanceRoundLifecycle` (draft→open/empty/in_progress/pending_finalization),
-`result-sync.runResultSync` (today's fixtures → status → persist → score via RPC,
-**no push** — Phase 8 hook left), cron `auth`/`lock` helpers, `sync_locks` mutex
-(`0013`), `vercel.json`. tsc clean; 20 vitest pass; lint clean.
+**Phase 5 — round finalization (status only).** `finalization.ts`
+(`finalizeEligibleRounds` + pure `isRoundFinalizable`) transitions
+`pending_finalization → finalized` + `finalized_at`, idempotent, validating that
+all included fixtures are `finished` and all their predictions scored. Rounds with
+included postponed/abandoned/cancelled fixtures stay pending (Phase 9). Wired into
+the result-sync cron. **No leaderboard writes; no push.** Code-only (no migration).
+tsc clean; 25 vitest pass; lint clean.
 
-## Files Changed (Phase 4)
-- `supabase/migrations/post-wc/0013_sync_locks.sql`
-- `src/lib/cron/auth.ts`, `src/lib/cron/lock.ts`
-- `src/lib/providers/football/rounds.ts`, `src/lib/providers/football/result-sync.ts`
-- `src/app/api/cron/fixture-discovery/route.ts`, `src/app/api/cron/result-sync/route.ts`
-- `vercel.json`, `src/types/database.ts`
+## Files Changed (Phase 5)
+- `src/lib/providers/football/finalization.ts`
+- `src/lib/providers/football/__tests__/finalization.test.ts`
+- `src/app/api/cron/result-sync/route.ts` (calls finalizeEligibleRounds)
 - docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
 ## Important Decisions (see decision-log.md)
-P4 owns round transitions draft→open→in_progress→pending_finalization (terminal
-→finalized = P5); overlapping crons prevented via `sync_locks` TTL lease +
-`pg_advisory_xact_lock` atomic claim; **P4 scores but sends no push** (P8 hook);
-crons build now, activate at cutover (prod-only; 15-min needs Vercel Pro), tested
-manually on staging. Prior: status completed→finished; Round 1 = first Thu ≥
-season start (2026-08-06); Phase 2B defers world_cup; is_included locked order;
-predict-current-round-only; leaderboard_entries uniqueness = Phase 6 hard gate.
+P5 finalizes round STATUS only (pending_finalization→finalized + finalized_at),
+TS + optimistic guard, code-only; eligibility = ≥1 included fixture + ALL finished
++ ALL predictions scored; postponed/abandoned/cancelled block finalization until
+Phase 9; NO leaderboard writes/locking/snapshots/uniqueness (Phase 6); no push
+(round_finalized = `finalized[]` Phase 8 hook; leaderboard lock = Phase 6 seam).
+Prior: P4 round transitions + sync_locks lease + no-push; status completed→finished;
+Round 1 = first Thu ≥ season start (2026-08-06); Phase 2B defers world_cup;
+is_included locked order; predict-current-round-only.
 
 ## Deferred Items
-- **Phase 5**: round `→finalized` + `round_finalized`; finalize locks the leaderboard.
-- **Phase 6**: leaderboard recalc (hook in result-sync) + leaderboard_entries
-  idempotent uniqueness/upsert **hard gate** before any writer.
-- **Phase 8**: push for match-scored (hook = `scoredFixtureIds`), `new_round_opened`
-  (hook = `opened[]`), `prediction_locking_soon` (2h cron).
-- **Phase 9**: prediction voiding/reassignment for postponed/abandoned (P4 only
-  sets status).
-- **Phase 2B**: world_cup context + WC leaderboard backfill.
+- **Phase 6 (HARD GATE):** before ANY leaderboard writer, define + implement
+  `leaderboard_entries` idempotent unique key + `ON CONFLICT` upsert. Then: live
+  writer (after each scored fixture; hook = result-sync `scoredFixtureIds`),
+  Round/Season/All-Time + league leaderboards, and leaderboard LOCKING wired into
+  `finalizeEligibleRounds` (extension point already marked).
+- **Phase 8:** push for match-scored (`scoredFixtureIds`), `new_round_opened`
+  (`opened[]`), `round_finalized` (`finalized[]`), `prediction_locking_soon` (2h cron).
+- **Phase 9:** prediction voiding/reassignment for postponed/abandoned (unblocks
+  those rounds for finalization).
+- **Phase 2B:** world_cup context + WC leaderboard backfill.
 - Step 25: run `discoverProviderIds()` on staging with `API_FOOTBALL_KEY`.
 - Regenerate `database.ts` from migrated staging DB before cutover.
 - `push-notifications.sql` run in live DB (cutover prerequisite).
 
 ## Known Risks
-- Crons production-only + 15-min needs Pro; functional test requires staging DB +
-  `CRON_SECRET`/`API_FOOTBALL_KEY`. Not validated against live (un-migrated) DB.
-- API-Football status map/friendly keywords unvalidated vs real responses (§24 eval).
-- `ingest.resolveCompetition` placeholder competition dates.
-- A round with an `is_included` postponed fixture won't reach pending_finalization
-  until Phase 9 voiding — acceptable interim.
+- Finalization depends on result-sync having scored fixtures; if scoring lags, a
+  round stays pending_finalization and (if finished-but-unscored) raises a
+  system_alert — by design, not auto-forced.
+- Crons production-only + 15-min needs Vercel Pro; validated on staging only.
+- API-Football status map/friendly keywords unvalidated vs real responses (§24).
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`66261e7`** — `feat(post-wc): Phase 4 — sync cron jobs (steps 26-27)` (branch `post-wc`).
-A docs commit follows this entry. Prior: `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`eff28a6`** — `feat(post-wc): Phase 5 — round finalization (status only)` (branch `post-wc`).
+A docs commit follows this entry. Prior: `66261e7` (P4), `4abc320` (P3),
+`5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 5 — Scoring engine extensions / round finalization.** Build the terminal
-round transition `pending_finalization → finalized` (lock final leaderboard state,
-set `finalized_at`) and fire `round_finalized` (the notification dispatch itself is
-Phase 8; Phase 5 provides the transition + `after()`-style hook). Coordinate with
-the Phase 6 leaderboard hard gate. Present a Phase 5 plan first, then implement on
-approval.
+**Phase 6 — Leaderboards.** FIRST satisfy the hard gate: design + implement the
+`leaderboard_entries` unique key + `ON CONFLICT` upsert (handle nullable
+round_id/season_id/league_id, e.g. via COALESCE-based unique index — a new
+migration `0014`). THEN: live leaderboard writer (after each scored fixture,
+filtered by prediction_context_id), Round/Season/All-Time + league leaderboards,
+and wire leaderboard locking into finalization. Present a Phase 6 plan first
+(separating the uniqueness/upsert migration from the writer), get approval, implement.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.
-2. Verify repo: branch `post-wc`; `git log --oneline -6`; `main` = `ef40370`;
+2. Verify repo: branch `post-wc`; `git log --oneline -7`; `main` = `ef40370`;
    working tree clean; migrations still files-only (never executed); live DB untouched.
 3. Do NOT push, deploy, execute SQL, or touch `main`/production unless told.
 4. Phase gate: plan → approval → implement → verify (tsc + lint + vitest) →

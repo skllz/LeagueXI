@@ -8,13 +8,15 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 4 complete** (sync cron jobs). **Phase 5 not started** (round finalization).
+**Phase 5 complete** (round finalization, status only). **Phase 6 not started** (leaderboards).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
 - **Phase 2** — new schema tables (steps 10–17) (`5c852b1`).
 - **Phase 3** — football provider abstraction layer (steps 20–25) (`4abc320`).
 - **Phase 4** — sync cron jobs (steps 26–27) (`66261e7`).
+- **Phase 5** — round finalization, status only (step 28) (`eff28a6`). Code-only;
+  no migration (status enum + finalized_at already existed).
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
@@ -71,6 +73,9 @@ All SECURITY DEFINER, **not executed**.
   `discover.discoverProviderIds`). **Dormant** — not invoked by any page.
 - **Phase 4 sync** (`src/lib/providers/football/`): `result-sync.runResultSync`,
   `rounds.advanceRoundLifecycle`. Cron infra `src/lib/cron/{auth,lock}.ts`.
+- **Phase 5 finalization** (`src/lib/providers/football/finalization.ts`):
+  `finalizeEligibleRounds`, pure `isRoundFinalizable`. Invoked by the result-sync
+  cron. No leaderboard writes.
 - **Phase 4 cron routes**: `src/app/api/cron/{fixture-discovery,result-sync}/route.ts`
   + `vercel.json`. Crons fire only on the PRODUCTION deployment (from `main`) —
   inactive until cutover; `vercel.json` presence alone does not activate them.
@@ -78,12 +83,19 @@ All SECURITY DEFINER, **not executed**.
 - Web code (actions/pages/components) updated to the migrated schema names; will
   only run correctly against a migrated DB (staging/cutover).
 
-## Round lifecycle ownership (Phase 4)
-`advanceRoundLifecycle` (called by both crons) owns forward-only, idempotent
-transitions: draft→open, draft→empty (summer gap), →in_progress, →pending_finalization.
-Terminal →finalized + `round_finalized` are Phase 5/8. `new_round_opened` (Phase 8)
-hooks the `opened[]` list. Result-sync collects `scoredFixtureIds` as the Phase 8
-push hook — **Phase 4 sends no push**.
+## Round lifecycle ownership (Phase 4 + Phase 5)
+- **Phase 4** `advanceRoundLifecycle` (both crons): forward-only, idempotent
+  draft→open, draft→empty (summer gap), →in_progress, →pending_finalization.
+- **Phase 5** `finalizeEligibleRounds` (`finalization.ts`, called by result-sync
+  cron after lifecycle): terminal pending_finalization→finalized + `finalized_at`,
+  idempotent optimistic guard. Eligibility: ≥1 included fixture, ALL included
+  fixtures `finished`, ALL their predictions scored. Rounds with included
+  postponed/abandoned/cancelled fixtures stay pending_finalization (Phase 9).
+  Finished-but-unscored raises a `system_alerts` warning.
+- **Hooks (no push until Phase 8):** `opened[]` → `new_round_opened`;
+  `scoredFixtureIds` → match-scored; `finalized[]` → `round_finalized`.
+- **Phase 6 seam:** finalization marks a leaderboard-lock extension point but does
+  NOT write/lock/snapshot `leaderboard_entries` — that is the Phase 6 hard gate.
 
 ## RLS Policies (post-WC, Implemented in 0002 + per-table P2 files)
 fixtures, predictions, leagues, league_members policies recreated for renamed

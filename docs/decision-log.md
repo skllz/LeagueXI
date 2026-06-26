@@ -123,3 +123,11 @@ Decision: Phase 4 may score fixtures but sends NO push notifications; leave a tr
 Reason: Keep notification work in Phase 8; avoid activating production crons during the build.
 Impact: `result-sync.ts` returns `scoredFixtureIds` with a marked Phase 8 hook; `vercel.json` committed but dormant.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 5 implements round finalization STATUS ONLY (pending_finalization→finalized + finalized_at), code-only, TS service with optimistic guard. Eligibility requires ≥1 included fixture, ALL included fixtures = finished, and ALL their predictions scored. Rounds containing included postponed/abandoned/cancelled fixtures must NOT finalize — they remain pending_finalization until Phase 9 fixture voiding/resolution. No leaderboard_entries writes/locking/snapshots/ranking/uniqueness (Phase 6). No push (round_finalized = Phase 8; leaderboard lock = Phase 6 seam).
+Reason: Separate round lifecycle finalization from leaderboard locking; respect the Phase 6 leaderboard idempotency hard gate and Phase 9 fixture resolution.
+Impact: `finalization.ts` (`finalizeEligibleRounds`, `isRoundFinalizable`); result-sync cron wires it after lifecycle; finished-but-unscored raises a system_alert. 5 new tests.
+Status: Approved
