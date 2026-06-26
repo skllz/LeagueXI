@@ -4,8 +4,9 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — phases 1–9 implemented & committed on `post-wc`; Phase 10 not
-started. No migrations executed; nothing deployed; not pushed.
+**In Progress** — build-order phases 1–10 complete on `post-wc` (Phase 10 = verified,
+no change). Remaining: Phase 2B + cutover execution. No migrations executed; nothing
+deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -14,14 +15,15 @@ started. No migrations executed; nothing deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 9 — postponement & abandonment handling.** `voiding.ts` (`voidFixture`,
-`rescheduleFixture`, `roundForKickoff`, pure `isSameRoundWindow`). Auto-void wired
-into result-sync; admin tools `setFixtureVoidStatus` / `rescheduleFixture` /
-`acceptOfficialResult` / `cancelRound` with `reconcileAffectedRounds`
-(recompute→lifecycle→finalize) so voiding unblocks `pending_finalization`
-immediately. UI: `/admin/fixtures-manage` + `FixtureLifecycleActions`,
-`CancelRoundButton` on rounds, "Manage" nav. Code-only (no migration). tsc/lint/47
-tests/`next build` pass.
+**Phase 10 — proxy 204/null-body: VERIFIED (no change).** The proxy route
+(`src/app/api/supabase-proxy/[...path]/route.ts:106`) already passes a `null` body
+for [101,204,205,304], so void RPCs / DELETE / 304 don't 500. Matches the
+2026-06-20 fix (`HANDOVER.md:379`). Verification = code read; no rebuild. This was
+the last build-order phase — **the post-WC web build is functionally complete**
+(pending Phase 2B + cutover).
+
+Prior: **Phase 9 — postponement & abandonment** (`voiding.ts`, auto-void in
+result-sync, admin lifecycle tools, `/admin/fixtures-manage`).
 
 ## Files Changed (Phase 9)
 - `src/lib/providers/football/voiding.ts` (+ `__tests__/voiding.test.ts`)
@@ -59,17 +61,19 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`ca677e7`** — `feat(post-wc): Phase 9 — postponement & abandonment handling`
-(branch `post-wc`). A docs commit follows. Prior: `2743fd4` (P8), `15ac931` (P7),
-`1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4), `4abc320` (P3),
-`5c852b1` (P2), `6fd5a3c` (P1).
+**`da86c19`** — `docs(post-wc): update continuity docs for Phase 9` (branch
+`post-wc`); Phase 10 is verification-only (this docs commit follows). Code commits:
+`ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A),
+`eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 10 — Proxy 204 bug (verify).** Read the null-body fix in `HANDOVER.md`
-(2026-06-20) and the proxy route `src/app/api/supabase-proxy/[...path]/route.ts`;
-confirm 101/204/205/304 return a null body. If already covered (expected), record
-Phase 10 as verification-only with the verification method; only change the route
-if a real gap exists. Present findings, then (if needed) a fix plan, before editing.
+**Phase 2B** (deferred) — historical `world_cup` prediction context + backfill WC
+`leaderboard_entries` (build steps 18–19). Decide the WC→`round_id` model first
+(tournament-level rows vs synthesized WC rounds), then write `0017_*` (or next
+free number) migration. Present a Phase 2B plan first. Otherwise, the remaining
+work is **cutover execution** (§27A: native store-approved → run migrations
+0001–0016 in order → seed → 2B backfill → deploy → enable crons), which is a
+go-live activity, not a build-phase.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.

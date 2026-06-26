@@ -171,3 +171,11 @@ Decision: Phase 9 postponement/abandonment/cancellation. Voiding = set fixture s
 Reason: Spec §16/§11; reuse the computed-inclusion model; let voided fixtures stop counting and unblock finalization; clean "predict again" on future reschedule.
 Impact: voiding.ts (voidFixture, rescheduleFixture, roundForKickoff, isSameRoundWindow); result-sync auto-void; admin-leaguexi.ts actions + reconcileAffectedRounds; /admin/fixtures-manage UI + cancelRound on rounds; voiding.test.ts. Web-only.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 10 (proxy 204/null-body) is verification-only — no rebuild. The proxy route already returns a null body for statuses [101,204,205,304] (route.ts:106), so void RPCs/DELETE/304 no longer 500. Matches the 2026-06-20 fix recorded in HANDOVER.md:379.
+Reason: Verification showed no gap; spec §18 concern already addressed.
+Impact: No code change. Phase 10 recorded as Verified (method: code read of supabase-proxy route + HANDOVER record). All build-order phases 1–10 complete.
+Status: Verified

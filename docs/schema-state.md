@@ -8,8 +8,8 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 9 complete** (postponement & abandonment handling). **Phase 10 not started**
-(verify proxy 204 fix — likely verification-only).
+**Phase 10 verified** (proxy 204/null-body — already fixed, no gap). All build-order
+phases (1–10) complete. Remaining work is Phase 2B + cutover execution (see Deferred).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
@@ -23,6 +23,9 @@
 - **Phase 8** — new notification types (steps 39–41 + match-scored wiring) (`2743fd4`).
 - **Phase 9** — postponement & abandonment handling (steps 42–44) (`ca677e7`).
   Code-only; no migration (voiding reuses admin_exclude_override).
+- **Phase 10** — proxy 204/null-body (step 45): **verified, no change needed**.
+  `route.ts:106` already passes `null` for [101,204,205,304]; matches the
+  2026-06-20 fix. Verification method: code read of the proxy route + HANDOVER record.
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
