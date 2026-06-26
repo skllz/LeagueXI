@@ -7,6 +7,12 @@ const adminNav = [
   { href: "/admin/fixtures", label: "Fixtures" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/leagues", label: "Leagues" },
+  // Post-WC (LeagueXI) admin sections:
+  { href: "/admin/teams", label: "Teams" },
+  { href: "/admin/rounds", label: "Rounds" },
+  { href: "/admin/contexts", label: "Contexts" },
+  { href: "/admin/fixture-review", label: "Review" },
+  { href: "/admin/sync", label: "Sync" },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

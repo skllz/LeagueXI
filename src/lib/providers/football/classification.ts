@@ -7,6 +7,9 @@
 
 import type { NormalizedCompetition } from "./types"
 
+/** Minimal competition shape the classifier needs (name + country). */
+export type CompetitionRef = Pick<NormalizedCompetition, "name" | "country">
+
 export type InclusionSource =
   | "admin_override"
   | "blocklist"
@@ -95,7 +98,7 @@ const FRIENDLY_KEYWORDS = [
 ]
 
 // ── Matchers ─────────────────────────────────────────────────────────────────
-export function matchesAllowlist(comp: NormalizedCompetition): boolean {
+export function matchesAllowlist(comp: CompetitionRef): boolean {
   const name = normalizeName(comp.name)
   const country = normalizeCountry(comp.country)
   return ALLOWLIST.some(
@@ -103,7 +106,7 @@ export function matchesAllowlist(comp: NormalizedCompetition): boolean {
   )
 }
 
-export function matchesBlocklist(comp: NormalizedCompetition): boolean {
+export function matchesBlocklist(comp: CompetitionRef): boolean {
   const name = normalizeName(comp.name)
   return BLOCKLIST.some((phrase) => name.includes(phrase))
 }
@@ -116,7 +119,7 @@ export function matchesBlocklist(comp: NormalizedCompetition): boolean {
  */
 export function detectFriendly(
   providerSaysFriendly: boolean,
-  comp: NormalizedCompetition
+  comp: CompetitionRef
 ): boolean {
   if (providerSaysFriendly) return true
   const name = normalizeName(comp.name)
@@ -127,7 +130,7 @@ export function detectFriendly(
 export interface InclusionInput {
   adminIncludeOverride: boolean | null
   adminExcludeOverride: boolean | null
-  competition: NormalizedCompetition
+  competition: CompetitionRef
   isFriendly: boolean
   /** Provider competitive-default signal (true = provider treats it competitive). */
   isCompetitive: boolean
