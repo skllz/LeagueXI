@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 
 type DB = SupabaseClient<Database>
-export type SyncJob = "fixture_discovery" | "match_result_sync"
+export type SyncJob = "fixture_discovery" | "match_result_sync" | "prediction_locking_soon"
 
 export interface LockedRun<T> {
   skipped: boolean

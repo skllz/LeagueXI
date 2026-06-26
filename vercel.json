@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/fixture-discovery", "schedule": "0 */12 * * *" },
-    { "path": "/api/cron/result-sync", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/result-sync", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/locking-reminders", "schedule": "*/15 * * * *" }
   ]
 }

@@ -132,6 +132,7 @@ export type Database = {
           admin_include_override: boolean | null
           admin_exclude_override: boolean | null
           last_synced_at: string | null
+          locking_reminder_sent_at: string | null
           created_at: string
           updated_at: string
         }
@@ -164,6 +165,7 @@ export type Database = {
           admin_include_override?: boolean | null
           admin_exclude_override?: boolean | null
           last_synced_at?: string | null
+          locking_reminder_sent_at?: string | null
         }
         Update: {
           competition_id?: string
@@ -193,6 +195,7 @@ export type Database = {
           admin_include_override?: boolean | null
           admin_exclude_override?: boolean | null
           last_synced_at?: string | null
+          locking_reminder_sent_at?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -6,6 +6,7 @@
 // runs its steps, and releases the lease. Idempotent throughout.
 // ════════════════════════════════════════════════════════════════════════════
 
+import { after } from "next/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 import { withSyncLock, type LockedRun } from "@/lib/cron/lock"
@@ -13,12 +14,42 @@ import { runFixtureDiscovery } from "./ingest"
 import { runResultSync } from "./result-sync"
 import { advanceRoundLifecycle } from "./rounds"
 import { finalizeEligibleRounds } from "./finalization"
+import { isWithinLockingWindow, LOCKING_WINDOW_HOURS } from "./locking-reminders"
+import {
+  sendMatchScoredNotifications,
+  sendNewRoundOpenedNotifications,
+  sendRoundFinalizedNotifications,
+  sendPredictionLockingSoonNotifications,
+} from "@/lib/push"
 
 type DB = SupabaseClient<Database>
 
 const HORIZON_DAYS = 28
 const DISCOVERY_LEASE_TTL = 900 // 15 min safety net
 const RESULT_LEASE_TTL = 600 // 10 min safety net
+const LOCKING_LEASE_TTL = 300
+
+// ── Notification dispatch (Phase 8) ──────────────────────────────────────────
+// Transition-gated lists → fire-and-forget pushes after the response. Errors are
+// swallowed per-item so one failure never blocks the rest or the job. No-op until
+// the native app registers device tokens.
+function dispatchSyncNotifications(lists: {
+  scoredFixtureIds?: string[]
+  openedRoundIds?: string[]
+  finalizedRoundIds?: string[]
+}): void {
+  after(async () => {
+    for (const id of lists.scoredFixtureIds ?? []) {
+      try { await sendMatchScoredNotifications(id) } catch (e) { console.error("[push] match_scored", e) }
+    }
+    for (const id of lists.openedRoundIds ?? []) {
+      try { await sendNewRoundOpenedNotifications(id) } catch (e) { console.error("[push] new_round_opened", e) }
+    }
+    for (const id of lists.finalizedRoundIds ?? []) {
+      try { await sendRoundFinalizedNotifications(id) } catch (e) { console.error("[push] round_finalized", e) }
+    }
+  })
+}
 
 async function activeStandardContextId(db: DB): Promise<string | null> {
   const { data } = await db
@@ -49,6 +80,8 @@ export async function runFixtureDiscoveryJob(db: DB): Promise<
     const discovery = await runFixtureDiscovery(from, to)
     const lifecycle = await advanceRoundLifecycle(db, contextId)
 
+    dispatchSyncNotifications({ openedRoundIds: lifecycle.opened })
+
     return { contextId, discovery, lifecycle }
   })
 }
@@ -66,6 +99,58 @@ export async function runResultSyncJob(db: DB): Promise<
     const sync = await runResultSync(db)
     const lifecycle = contextId ? await advanceRoundLifecycle(db, contextId) : null
     const finalization = contextId ? await finalizeEligibleRounds(db, contextId) : null
+
+    dispatchSyncNotifications({
+      scoredFixtureIds: sync.scoredFixtureIds,
+      openedRoundIds: lifecycle?.opened,
+      finalizedRoundIds: finalization?.finalized,
+    })
+
     return { contextId, sync, lifecycle, finalization }
+  })
+}
+
+/**
+ * Prediction-locking reminders: fixtures entering the 2h pre-kickoff window that
+ * haven't been reminded yet. Claims each fixture (sets locking_reminder_sent_at)
+ * BEFORE sending so overlapping runs can't double-send; the flag is the
+ * idempotency mechanism (the lease is belt-and-braces).
+ */
+export async function runLockingRemindersJob(
+  db: DB
+): Promise<LockedRun<{ reminded: number }>> {
+  return withSyncLock(db, "prediction_locking_soon", LOCKING_LEASE_TTL, async () => {
+    const now = new Date()
+    const windowEnd = new Date(now.getTime() + LOCKING_WINDOW_HOURS * 60 * 60 * 1000)
+
+    const { data: fixtures } = await db
+      .from("fixtures")
+      .select("id, kickoff_datetime_utc")
+      .eq("is_included", true)
+      .eq("status", "scheduled")
+      .is("locking_reminder_sent_at", null)
+      .gt("kickoff_datetime_utc", now.toISOString())
+      .lte("kickoff_datetime_utc", windowEnd.toISOString())
+
+    const due = (fixtures ?? []).filter((f) =>
+      isWithinLockingWindow(f.kickoff_datetime_utc, now.getTime())
+    )
+    if (due.length === 0) return { reminded: 0 }
+
+    const ids = due.map((f) => f.id)
+    // Claim first (idempotency), then send after the response.
+    await db.from("fixtures").update({ locking_reminder_sent_at: now.toISOString() }).in("id", ids)
+
+    after(async () => {
+      for (const id of ids) {
+        try {
+          await sendPredictionLockingSoonNotifications(id)
+        } catch (e) {
+          console.error("[push] prediction_locking_soon", e)
+        }
+      }
+    })
+
+    return { reminded: ids.length }
   })
 }
