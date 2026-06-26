@@ -155,3 +155,11 @@ Decision: Phase 7 admin panel extensions are web-only (§27B). No admin audit-lo
 Reason: Operator tooling without scope creep; keep service-role boundaries tight; honor spec §19/§23/§27B.
 Impact: admin-leaguexi.ts + /admin/{teams,rounds,contexts,fixture-review,sync}; classification matchers accept a minimal CompetitionRef. No migration.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 8 notifications. prediction_locking_soon de-duped by a new column fixtures.locking_reminder_sent_at (0016) — the fixture owns delivery state (no ledger table, no non-persistent window). Cron claims (sets sent_at) then sends. Audiences: match_scored → users who predicted the fixture; new_round_opened → broadcast to all device-token holders; round_finalized → round participants; prediction_locking_soon → users who have NOT predicted that fixture. after() dispatch lives in jobs.ts so crons + admin manual triggers both notify, transition-gated to avoid double sends. ExpoMessage carries a `data` nav payload (round_id/fixture_id) for native routing.
+Reason: Idempotent reminders; nudge non-predictors (weekly engagement); consistent dispatch across both sync paths; native nav contract.
+Impact: 0016 migration; push.ts senders + data; jobs.ts dispatch + runLockingRemindersJob; /api/cron/locking-reminders + vercel.json; SyncJob widened. Dormant until device tokens registered.
+Status: Approved

@@ -33,9 +33,15 @@ store approval (see the spec §27A Cutover Sequencing).
 **Phase 4 — sync infrastructure:**
 13. `0013_sync_locks.sql` — cron mutex (sync_locks + claim/release RPCs)
 
+**Phase 8 — notifications:**
+- `0016_locking_reminder.sql` — fixtures.locking_reminder_sent_at (+ partial index)
+  for prediction_locking_soon idempotency. (Run any time after 0001.)
+
 **Phase 6A — leaderboard idempotency (hard gate, before any writer):**
 14. `0014_leaderboard_entries_unique.sql` — COALESCE-sentinel unique index on
     leaderboard_entries (one row per user/context/round/season/league scope).
+15. `0015_leaderboard_writer.sql` — recalculate_leaderboards + read RPCs (Phase 6B).
+16. `0016_locking_reminder.sql` — fixtures.locking_reminder_sent_at (Phase 8).
 
 Run each DDL file inside its own transaction (every file is wrapped in
 `begin; … commit;`). Verification files (`0003`, `0012`) are read-only.

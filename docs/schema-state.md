@@ -8,8 +8,8 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 7 complete** (admin panel extensions, web-only). **Phase 8 not started**
-(new notification types).
+**Phase 8 complete** (new notification types). **Phase 9 not started**
+(postponement & abandonment handling).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
@@ -20,7 +20,7 @@
 - **Phase 6A** — leaderboard_entries uniqueness index (`feadd95`).
 - **Phase 6B** — leaderboard writer + read RPCs (steps 29–32) (`1f72c25`).
 - **Phase 7** — admin panel extensions, web-only (steps 33–38) (`15ac931`).
-  Code-only; no migration.
+- **Phase 8** — new notification types (steps 39–41 + match-scored wiring) (`2743fd4`).
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
@@ -63,6 +63,8 @@ Path: `supabase/migrations/post-wc/` (see README for run order + isolation rules
 - `0015_leaderboard_writer.sql` (Phase 6B) — `recalculate_leaderboards(p_round_id)`
   writer + read RPCs `get_round_leaderboard`, `get_season_leaderboard`,
   `get_all_time_leaderboard`.
+- `0016_locking_reminder.sql` (Phase 8) — `fixtures.locking_reminder_sent_at`
+  column + partial index (prediction_locking_soon idempotency).
 
 ## New tables defined by post-WC migrations (Implemented, not Executed)
 `seasons`, `prediction_contexts`, `leaguexi_rounds`, `tracked_teams`,
@@ -113,8 +115,13 @@ All SECURITY DEFINER, **not executed**.
   fixtures `finished`, ALL their predictions scored. Rounds with included
   postponed/abandoned/cancelled fixtures stay pending_finalization (Phase 9).
   Finished-but-unscored raises a `system_alerts` warning.
-- **Hooks (no push until Phase 8):** `opened[]` → `new_round_opened`;
-  `scoredFixtureIds` → match-scored; `finalized[]` → `round_finalized`.
+- **Notifications (Phase 8, DONE):** `jobs.ts` fires `after()` pushes —
+  `scoredFixtureIds` → match_scored, `opened[]` → new_round_opened, `finalized[]`
+  → round_finalized — from both crons and admin manual triggers. A third cron
+  `/api/cron/locking-reminders` (`runLockingRemindersJob`) fires
+  `prediction_locking_soon` ~2h pre-kickoff, once per fixture via
+  `fixtures.locking_reminder_sent_at`. Senders live in `src/lib/push.ts` (now
+  carry a `data` nav payload). Dormant until device tokens exist.
 - **Phase 6B leaderboard wiring (DONE):** result-sync calls
   `recalculate_leaderboards` once per scored round (live update); finalization
   does a final recompute then flips to `finalized` (writer's finalized-guard then
