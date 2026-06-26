@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/fixture-discovery", "schedule": "0 */12 * * *" },
+    { "path": "/api/cron/result-sync", "schedule": "*/15 * * * *" }
+  ]
+}

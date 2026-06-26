@@ -636,6 +636,23 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_locks: {
+        Row: {
+          job: string
+          locked_at: string
+          expires_at: string
+        }
+        Insert: {
+          job: string
+          locked_at?: string
+          expires_at: string
+        }
+        Update: {
+          locked_at?: string
+          expires_at?: string
+        }
+        Relationships: []
+      }
       leaderboard_entries: {
         Row: {
           id: string
@@ -804,6 +821,14 @@ export type Database = {
       generate_leaguexi_rounds: {
         Args: { p_context_id: string }
         Returns: number
+      }
+      claim_sync_slot: {
+        Args: { p_job: string; p_ttl_seconds: number }
+        Returns: boolean
+      }
+      release_sync_slot: {
+        Args: { p_job: string }
+        Returns: undefined
       }
     }
     Enums: {
