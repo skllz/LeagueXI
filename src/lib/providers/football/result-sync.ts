@@ -32,6 +32,8 @@ export interface ResultSyncResult {
   errors: string[]
   /** Fixtures that transitioned to finished this run — Phase 8 push hook. */
   scoredFixtureIds: string[]
+  /** Rounds whose leaderboards were recalculated this run. */
+  leaderboardRoundsRecalculated: string[]
 }
 
 function startOfTodayUtcIso(now: Date): string {
@@ -52,7 +54,9 @@ export async function runResultSync(
     skipped: 0,
     errors: [],
     scoredFixtureIds: [],
+    leaderboardRoundsRecalculated: [],
   }
+  const scoredRoundIds = new Set<string>()
 
   try {
     const provider = await getProvider(providerName)
@@ -115,6 +119,7 @@ export async function runResultSync(
 
           result.scored++
           result.scoredFixtureIds.push(fx.id)
+          if (fx.round_id) scoredRoundIds.add(fx.round_id)
           // ── PHASE 8 EXTENSION POINT ──────────────────────────────────────
           // Transition-gated: this fixture just flipped to finished. Phase 8
           // will call sendMatchScoredNotifications(fx.id) here (best-effort,
@@ -145,6 +150,17 @@ export async function runResultSync(
         result.errors.push(
           `fixture ${fx.id} (${providerFixtureId}): ${e instanceof Error ? e.message : String(e)}`
         )
+      }
+    }
+
+    // Phase 6B: live leaderboard update — recompute once per round that had a
+    // fixture scored this run (deduped). Idempotent; skips finalized rounds.
+    for (const roundId of scoredRoundIds) {
+      const { error: lbErr } = await db.rpc("recalculate_leaderboards", { p_round_id: roundId })
+      if (lbErr) {
+        result.errors.push(`recalculate_leaderboards(${roundId}) failed: ${lbErr.message}`)
+      } else {
+        result.leaderboardRoundsRecalculated.push(roundId)
       }
     }
 

@@ -125,7 +125,16 @@ export async function finalizeEligibleRounds(
         continue
       }
 
-      // Finalize — optimistic guard keeps it idempotent / race-safe.
+      // Phase 6B LEADERBOARD LOCK — step 1: final recompute while the round is
+      // still pending_finalization (captures the last scored fixture; "locks the
+      // final state, does not recompute from scratch", spec §12). After the
+      // status flips to finalized below, recalculate_leaderboards refuses further
+      // writes for this round (its finalized-guard) → the leaderboard is locked.
+      const { error: lbErr } = await db.rpc("recalculate_leaderboards", { p_round_id: r.id })
+      if (lbErr) throw new Error(`final leaderboard recompute failed: ${lbErr.message}`)
+
+      // Finalize — optimistic guard keeps it idempotent / race-safe. Must run
+      // AFTER the recompute above so the writer isn't blocked by its own lock.
       const { data: updated, error: upErr } = await db
         .from("leaguexi_rounds")
         .update({ status: "finalized", finalized_at: now.toISOString() })
@@ -136,15 +145,9 @@ export async function finalizeEligibleRounds(
 
       if (updated && updated.length > 0) {
         out.finalized.push(r.id)
-        // ── PHASE 6 EXTENSION POINT ──────────────────────────────────────────
-        // Lock the final leaderboard snapshot for this round here once the
-        // Phase 6 leaderboard writer + uniqueness/upsert exists. NOT done in
-        // Phase 5 — finalization validates prediction scoring, never reads or
-        // writes leaderboard_entries.
-        //
         // ── PHASE 8 EXTENSION POINT ──────────────────────────────────────────
         // round_finalized notification fires for this round (best-effort,
-        // after()). Returned in `finalized[]`. NOT sent in Phase 5.
+        // after()). Returned in `finalized[]`. NOT sent until Phase 8.
         // ─────────────────────────────────────────────────────────────────────
       }
     } catch (e) {

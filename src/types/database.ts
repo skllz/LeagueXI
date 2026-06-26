@@ -830,6 +830,50 @@ export type Database = {
         Args: { p_job: string }
         Returns: undefined
       }
+      recalculate_leaderboards: {
+        Args: { p_round_id: string }
+        Returns: undefined
+      }
+      get_round_leaderboard: {
+        Args: { p_round_id: string; p_league_id?: string | null }
+        Returns: {
+          user_id: string
+          username: string
+          avatar_url: string | null
+          points: number
+          correct_scores: number
+          correct_outcomes: number
+          rank: number
+        }[]
+      }
+      get_season_leaderboard: {
+        Args: {
+          p_season_id: string
+          p_prediction_context_id: string
+          p_league_id?: string | null
+        }
+        Returns: {
+          user_id: string
+          username: string
+          avatar_url: string | null
+          points: number
+          correct_scores: number
+          correct_outcomes: number
+          rank: number
+        }[]
+      }
+      get_all_time_leaderboard: {
+        Args: { p_league_id?: string | null }
+        Returns: {
+          user_id: string
+          username: string
+          avatar_url: string | null
+          points: number
+          correct_scores: number
+          correct_outcomes: number
+          rank: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
