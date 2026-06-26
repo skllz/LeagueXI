@@ -11,7 +11,7 @@
 //
 // Out of Phase 4 scope (deferred): leaderboard recalculation (Phase 6), round
 // →finalized + round_finalized notification (Phase 5/8), prediction voiding for
-// postponed/abandoned (Phase 9 — status is set here, voiding is not).
+// postponed/abandoned/cancelled (Phase 9 — auto-voided via voidFixture).
 //
 // No live scores — a `live` status only flips the fixture for locking/UX.
 // ════════════════════════════════════════════════════════════════════════════
@@ -19,6 +19,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 import { getProvider } from "./provider"
+import { voidFixture } from "./voiding"
 import type { ProviderName } from "./types"
 
 type DB = SupabaseClient<Database>
@@ -137,12 +138,13 @@ export async function runResultSync(
           status.status === "abandoned" ||
           status.status === "cancelled"
         ) {
-          // Status only — prediction voiding/reassignment is Phase 9.
-          const { error: upErr } = await db
-            .from("fixtures")
-            .update({ status: status.status, last_synced_at: new Date().toISOString() })
-            .eq("id", fx.id)
-          if (upErr) throw new Error(upErr.message)
+          // Phase 9: auto-void — set status, exclude (admin_exclude_override),
+          // reset predictions.points. The round is added to the recompute set so
+          // the leaderboard drops the voided fixture; the job's finalize step then
+          // unblocks the round if the remaining included fixtures are all done.
+          const v = await voidFixture(db, fx.id, status.status)
+          if (v.error) throw new Error(v.error)
+          if (fx.round_id) scoredRoundIds.add(fx.round_id)
           result.statusUpdated++
         }
       } catch (e) {

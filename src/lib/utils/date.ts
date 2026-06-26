@@ -94,3 +94,9 @@ export function groupMatchesByDay<T extends { kickoff_at: string }>(
 export function isBeforeKickoff(kickoffAt: string): boolean {
   return new Date(kickoffAt) > new Date()
 }
+
+// Current epoch ms. Isolated here so server components can read "now" without
+// tripping the react-hooks/purity lint rule on direct Date.now() in render.
+export function nowMs(): number {
+  return Date.now()
+}

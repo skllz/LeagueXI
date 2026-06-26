@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { GenerateRoundsButton } from "@/components/admin/leaguexi/generate-rounds-button"
+import { CancelRoundButton } from "@/components/admin/leaguexi/cancel-round-button"
 import { Badge } from "@/components/ui/badge"
+
+const TERMINAL_ROUND = ["finalized", "cancelled"]
 
 export const revalidate = 0
 
@@ -55,6 +58,7 @@ export default async function AdminRoundsPage() {
                 <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Window (UTC)</th>
                 <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Status</th>
                 <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Included fixtures</th>
+                <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -68,6 +72,9 @@ export default async function AdminRoundsPage() {
                     <Badge variant="secondary" className="text-xs">{r.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-sm">{countByRound.get(r.id) ?? 0}</td>
+                  <td className="px-4 py-3">
+                    {!TERMINAL_ROUND.includes(r.status) && <CancelRoundButton roundId={r.id} />}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -12,6 +12,7 @@ const adminNav = [
   { href: "/admin/rounds", label: "Rounds" },
   { href: "/admin/contexts", label: "Contexts" },
   { href: "/admin/fixture-review", label: "Review" },
+  { href: "/admin/fixtures-manage", label: "Manage" },
   { href: "/admin/sync", label: "Sync" },
 ]
 
