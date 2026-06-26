@@ -163,3 +163,11 @@ Decision: Phase 8 notifications. prediction_locking_soon de-duped by a new colum
 Reason: Idempotent reminders; nudge non-predictors (weekly engagement); consistent dispatch across both sync paths; native nav contract.
 Impact: 0016 migration; push.ts senders + data; jobs.ts dispatch + runLockingRemindersJob; /api/cron/locking-reminders + vercel.json; SyncJob widened. Dormant until device tokens registered.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 9 postponement/abandonment/cancellation. Voiding = set fixture status (postponed/abandoned/cancelled) + admin_exclude_override=true (is_included recomputes to false via evaluateInclusion, honoring §28.20) + reset predictions.points=null; prediction ROWS kept for audit. EXCEPTION: rescheduling a fixture into a FUTURE round DELETES its predictions so users predict again (same-round reschedule keeps predictions, unlocks, resets points). No predictions.voided column. Auto-void in result-sync on provider void status; admin tools setFixtureVoidStatus/rescheduleFixture/acceptOfficialResult/cancelRound. Voiding unblocks pending_finalization by removing the fixture from the round's included set, then reconcile recomputes leaderboards + finalizes. Code-only (no migration).
+Reason: Spec §16/§11; reuse the computed-inclusion model; let voided fixtures stop counting and unblock finalization; clean "predict again" on future reschedule.
+Impact: voiding.ts (voidFixture, rescheduleFixture, roundForKickoff, isSameRoundWindow); result-sync auto-void; admin-leaguexi.ts actions + reconcileAffectedRounds; /admin/fixtures-manage UI + cancelRound on rounds; voiding.test.ts. Web-only.
+Status: Approved

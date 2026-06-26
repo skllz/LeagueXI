@@ -4,7 +4,7 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — phases 1–8 implemented & committed on `post-wc`; Phase 9 not
+**In Progress** — phases 1–9 implemented & committed on `post-wc`; Phase 10 not
 started. No migrations executed; nothing deployed; not pushed.
 
 ## Current State
@@ -14,84 +14,87 @@ started. No migrations executed; nothing deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 8 — New notification types (push).** `0016` adds
-`fixtures.locking_reminder_sent_at`. `push.ts` gains a `data` nav payload + three
-senders (`new_round_opened`, `round_finalized`, `prediction_locking_soon`);
-match-scored now carries `data`. `jobs.ts` fires `after()` pushes (transition-gated)
-for scored/opened/finalized from both crons and admin triggers. New
-`/api/cron/locking-reminders` (every 15 min) sends locking reminders once per
-fixture. Dormant until device tokens register. tsc/lint/43 tests/`next build` pass.
+**Phase 9 — postponement & abandonment handling.** `voiding.ts` (`voidFixture`,
+`rescheduleFixture`, `roundForKickoff`, pure `isSameRoundWindow`). Auto-void wired
+into result-sync; admin tools `setFixtureVoidStatus` / `rescheduleFixture` /
+`acceptOfficialResult` / `cancelRound` with `reconcileAffectedRounds`
+(recompute→lifecycle→finalize) so voiding unblocks `pending_finalization`
+immediately. UI: `/admin/fixtures-manage` + `FixtureLifecycleActions`,
+`CancelRoundButton` on rounds, "Manage" nav. Code-only (no migration). tsc/lint/47
+tests/`next build` pass.
 
-## Files Changed (Phase 8)
-- `supabase/migrations/post-wc/0016_locking_reminder.sql`
-- `src/lib/push.ts` (data payload + 3 senders + match-scored data)
-- `src/lib/providers/football/jobs.ts` (after() dispatch + runLockingRemindersJob)
-- `src/lib/providers/football/locking-reminders.ts` (+ `__tests__/locking-reminders.test.ts`)
-- `src/app/api/cron/locking-reminders/route.ts`, `vercel.json` (3rd cron)
-- `src/lib/cron/lock.ts` (SyncJob widened), `src/types/database.ts`
-- docs + migrations `README.md`
+## Files Changed (Phase 9)
+- `src/lib/providers/football/voiding.ts` (+ `__tests__/voiding.test.ts`)
+- `src/lib/providers/football/result-sync.ts` (auto-void)
+- `src/app/actions/admin-leaguexi.ts` (4 lifecycle actions + reconcile)
+- `src/app/admin/fixtures-manage/page.tsx`, `src/app/admin/rounds/page.tsx`,
+  `src/app/admin/layout.tsx` (nav)
+- `src/components/admin/leaguexi/{fixture-lifecycle-actions,cancel-round-button}.tsx`
+- `src/lib/utils/date.ts` (`nowMs`)
+- docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
 ## Important Decisions (see decision-log.md)
-Phase 8: locking reminder dedup via `fixtures.locking_reminder_sent_at` (fixture
-owns delivery state); audiences — match_scored→predictors, new_round_opened→
-broadcast, round_finalized→participants, prediction_locking_soon→non-predictors;
-`after()` dispatch in jobs.ts (crons + manual triggers); `data` nav payloads.
-Prior: leaderboard model (COALESCE unique, distinct ranks, All-Time query-time);
-P7 web-only admin; P5 finalization status-only; predict-current-round-only.
+Phase 9: void = status + `admin_exclude_override=true` (is_included recomputes
+false) + reset `predictions.points`; rows kept EXCEPT reschedule-into-future
+(predictions deleted, predict again); no `predictions.voided` column; auto-void in
+result-sync; voiding unblocks finalization. Prior: P8 notifications (data payloads,
+locking dedup via `fixtures.locking_reminder_sent_at`); leaderboard model (COALESCE
+unique, distinct ranks, All-Time query-time); predict-current-round-only.
 
 ## Deferred Items
-- **Phase 9 (next):** postponement & abandonment — admin tools for postponed/
-  abandoned fixtures, prediction voiding logic, round re-assignment for rescheduled
-  fixtures. Unblocks rounds currently held in pending_finalization (P5).
-- **Phase 10:** verify proxy 204 fix (HANDOVER says fixed 2026-06-20; likely a
-  verification-only step).
-- **Phase 2B:** world_cup context + WC leaderboard backfill.
+- **Phase 10 (next):** verify the proxy 204 null-body fix. `HANDOVER.md:379`
+  records it as fixed + verified live (2026-06-20) for 101/204/205/304 — expect a
+  **verification-only** step; only fix the proxy route if a gap is found.
+- **Phase 2B:** world_cup context + WC `leaderboard_entries` backfill (model TBD).
 - Step 25: run `discoverProviderIds()` on staging with `API_FOOTBALL_KEY`.
 - Regenerate `database.ts` from migrated staging DB before cutover.
 - `push-notifications.sql` run in live DB (cutover prerequisite).
+- Cutover sequencing (§27A): native store-approved first, then run migrations
+  0001–0016 in order, seed, backfill (2B), deploy, enable crons.
 
 ## Known Risks
-- Notifications are no-ops until the native app registers `device_tokens` (expected).
-- prediction_locking_soon broadcasts/nudges depend on device-token coverage;
-  audience for new_round_opened is a broadcast (revisit if noisy at scale).
-- Crons production-only + 15-min cadence needs Vercel Pro; staging-tested only.
+- Fully-voided open round can't finalize (`includedCount=0`) → admin `cancelRound`.
+- Notifications/sync are no-ops until device tokens register / crons run in prod.
+- Crons production-only + 15-min needs Vercel Pro; staging-tested only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`2743fd4`** — `feat(post-wc): Phase 8 — new notification types` (branch `post-wc`).
-A docs commit follows. Prior: `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A),
-`eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`ca677e7`** — `feat(post-wc): Phase 9 — postponement & abandonment handling`
+(branch `post-wc`). A docs commit follows. Prior: `2743fd4` (P8), `15ac931` (P7),
+`1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4), `4abc320` (P3),
+`5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 9 — Postponement & abandonment handling.** Admin tools to mark fixtures
-postponed/abandoned; prediction voiding logic (void predictions, exclude from
-leaderboard/possible points); round re-assignment for rescheduled fixtures (same
-round → keep predictions; future round → void + re-predict). This unblocks rounds
-held in pending_finalization by non-finished included fixtures (P5). Present a
-Phase 9 plan first, get approval, implement.
+**Phase 10 — Proxy 204 bug (verify).** Read the null-body fix in `HANDOVER.md`
+(2026-06-20) and the proxy route `src/app/api/supabase-proxy/[...path]/route.ts`;
+confirm 101/204/205/304 return a null body. If already covered (expected), record
+Phase 10 as verification-only with the verification method; only change the route
+if a real gap exists. Present findings, then (if needed) a fix plan, before editing.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.
-2. Verify repo: branch `post-wc`; `git log --oneline -11`; `main` = `ef40370`;
+2. Verify repo: branch `post-wc`; `git log --oneline -12`; `main` = `ef40370`;
    working tree clean; migrations still files-only (never executed); live DB untouched.
 3. Do NOT push, deploy, execute SQL, or touch `main`/production unless told.
 4. Phase gate: plan → approval → implement → verify (tsc + lint + vitest [+ next
-   build for routes]) → commit to `post-wc` → Native Handoff Note → update these
-   docs → stop for approval.
+   build for routes/pages]) → commit to `post-wc` → Native Handoff Note → update
+   these docs → stop for approval.
 5. Honor predict-current-round-only; leaderboard writes only via
-   `recalculate_leaderboards`; service-role RPCs only after `requireAdmin`.
+   `recalculate_leaderboards`; service-role RPCs/voiding only after `requireAdmin`.
 
 ## Note
 Repo root `HANDOVER.md` is the WC-era handover (historical), separate from this
 `/docs` protocol set.
 
-## Native Handoff — notification payloads (§27B Phase 8) + leaderboard RPCs
-Every push carries a `data` payload for the native response handler to route:
-- `{ type: "match_scored", fixture_id, round_id }` → fixture / round
-- `{ type: "new_round_opened", round_id }` → current round screen
-- `{ type: "round_finalized", round_id }` → round leaderboard
-- `{ type: "prediction_locking_soon", fixture_id, round_id }` → fixture prediction screen
-Leaderboard read RPCs (unchanged from Phase 6):
-`get_round_leaderboard(p_round_id, p_league_id?)`,
-`get_season_leaderboard(p_season_id, p_prediction_context_id, p_league_id?)`,
-`get_all_time_leaderboard(p_league_id?)`.
+## Native Handoff — cumulative (no change in Phase 9)
+Phase 9 is web-only (admin fixture lifecycle) — **nothing for native**. Standing
+native contract from earlier phases:
+- Schema renames (P1): `matches`→`fixtures`, `match_id`→`fixture_id`,
+  `leagues.owner_id`→`creator_user_id`, drop league `competition_id`;
+  `get_league_predictions` OUT `match_id`→`fixture_id` (label `kickoff_at` kept).
+- Push `data` payloads (P8): `match_scored {fixture_id, round_id}`,
+  `new_round_opened {round_id}`, `round_finalized {round_id}`,
+  `prediction_locking_soon {fixture_id, round_id}`.
+- Leaderboard read RPCs (P6B): `get_round_leaderboard(p_round_id, p_league_id?)`,
+  `get_season_leaderboard(p_season_id, p_prediction_context_id, p_league_id?)`,
+  `get_all_time_leaderboard(p_league_id?)`.

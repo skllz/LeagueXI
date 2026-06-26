@@ -8,8 +8,8 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 8 complete** (new notification types). **Phase 9 not started**
-(postponement & abandonment handling).
+**Phase 9 complete** (postponement & abandonment handling). **Phase 10 not started**
+(verify proxy 204 fix — likely verification-only).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
@@ -21,6 +21,8 @@
 - **Phase 6B** — leaderboard writer + read RPCs (steps 29–32) (`1f72c25`).
 - **Phase 7** — admin panel extensions, web-only (steps 33–38) (`15ac931`).
 - **Phase 8** — new notification types (steps 39–41 + match-scored wiring) (`2743fd4`).
+- **Phase 9** — postponement & abandonment handling (steps 42–44) (`ca677e7`).
+  Code-only; no migration (voiding reuses admin_exclude_override).
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
@@ -102,6 +104,15 @@ All SECURITY DEFINER, **not executed**.
   fixture inclusion overrides + recompute, updateCompetition, manual sync
   triggers); admin pages `/admin/{teams,rounds,contexts,fixture-review,sync}` +
   `components/admin/leaguexi/*`; nav extended. No new RPCs/tables.
+- **Phase 9 voiding (web-only + auto)** (`providers/football/voiding.ts`):
+  `voidFixture` (status + admin_exclude_override → is_included false, reset
+  predictions.points), `rescheduleFixture` (same round → keep+unlock+reset;
+  future round → move + DELETE predictions), `roundForKickoff`, pure
+  `isSameRoundWindow`. Auto-void wired into result-sync. Admin actions in
+  `admin-leaguexi.ts`: `setFixtureVoidStatus`, `rescheduleFixture`,
+  `acceptOfficialResult`, `cancelRound` (+ `reconcileAffectedRounds`
+  recompute→lifecycle→finalize). UI: `/admin/fixtures-manage`,
+  `FixtureLifecycleActions`, `CancelRoundButton`, "Manage" nav. No migration.
 - `src/lib/supabase/admin.ts` — shared service-role client (server-only).
 - Web code (actions/pages/components) updated to the migrated schema names; will
   only run correctly against a migrated DB (staging/cutover).
@@ -113,8 +124,13 @@ All SECURITY DEFINER, **not executed**.
   cron after lifecycle): terminal pending_finalization→finalized + `finalized_at`,
   idempotent optimistic guard. Eligibility: ≥1 included fixture, ALL included
   fixtures `finished`, ALL their predictions scored. Rounds with included
-  postponed/abandoned/cancelled fixtures stay pending_finalization (Phase 9).
-  Finished-but-unscored raises a `system_alerts` warning.
+  postponed/abandoned/cancelled fixtures stay pending_finalization UNTIL Phase 9
+  voiding excludes them (then the round finalizes). Finished-but-unscored raises a
+  `system_alerts` warning.
+- **Phase 9 unblock:** voiding sets a stuck fixture `is_included=false`, removing
+  it from the round's included set; `reconcileAffectedRounds` (admin) and the
+  result-sync job then finalize the round if the remainder are done. A fully-voided
+  open round → admin `cancelRound`.
 - **Notifications (Phase 8, DONE):** `jobs.ts` fires `after()` pushes —
   `scoredFixtureIds` → match_scored, `opened[]` → new_round_opened, `finalized[]`
   → round_finalized — from both crons and admin manual triggers. A third cron
