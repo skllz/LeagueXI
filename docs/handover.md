@@ -37,6 +37,9 @@ status `completed→finished`; Round 1 = first Thu ≥ season start (2026-08-06)
 Phase 2B defers world_cup context + backfill; `is_included` locked order with
 friendly→blocklist; API-Football via discover utility (no hardcoded IDs); Vitest
 scoped to pure logic; leaderboard_entries uniqueness is a Phase 6 hard gate.
+**Predict-current-round-only**: users predict ONLY the current open round; future
+rounds/fixtures stay hidden from prediction UIs even when stored in the DB
+(discovery for sync reliability is fine).
 
 ## Deferred Items
 - **Phase 2B**: world_cup context + WC leaderboard backfill (steps 18–19); model TBD.
@@ -61,7 +64,11 @@ Prior safe commits: `5c852b1` (P2), `6fd5a3c` (P1).
 approval implement Vercel Cron route handlers: (a) Fixture Discovery every 12h —
 call `generate_leaguexi_rounds` then `runFixtureDiscovery`; (b) Match Status &
 Result Sync every 15 min for today's fixtures → update scores → scoring →
-match-scored notifications → round finalization checks. Read
+match-scored notifications → round finalization checks. **Constraint
+(predict-current-round-only):** Phase 4 may generate rounds ahead and store
+future fixtures for sync reliability, but must NOT expose them for prediction —
+only the current open round is predictable (enforced in prediction UIs in P6/P7
+and in the prediction write path). Read
 `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` and
 `…/04-functions/after.md` + cron config before writing route code.
 

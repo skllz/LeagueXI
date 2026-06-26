@@ -47,6 +47,12 @@ live product, preserved as history), and has **no live scores** in MVP.
   produces no public round.
 - Status: draft → open → in_progress → pending_finalization → finalized; plus
   empty / cancelled (hidden from users).
+- **Weekly engagement rule (predict-current-round-only):** users may predict
+  ONLY fixtures in the current **open** LeagueXI round. Future rounds are never
+  exposed for prediction even when future fixtures exist in the DB. Future
+  fixtures may be discovered/stored for sync reliability but stay hidden from the
+  prediction UI (web + native) until their round becomes open. Goal: weekly
+  return cadence, manageable workload, no full-season batch prediction.
 
 ## Scoring Model (unchanged from WC)
 - Exact scoreline **5**, correct result **3**, wrong **0**, voided **0/excluded**.

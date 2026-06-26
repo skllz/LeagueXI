@@ -87,6 +87,14 @@ Status: Approved
 ---
 
 Date: 2026-06-25
+Decision: Predict-current-round-only. Users may predict ONLY fixtures in the current OPEN LeagueXI round. Future rounds/fixtures are never exposed for prediction even if stored in the DB. Future fixtures may still be discovered and stored for sync reliability, but remain hidden from web/native prediction surfaces until their round becomes open.
+Reason: Drive weekly engagement and a manageable prediction workload; avoid full-season prediction batching and long tiring sessions.
+Impact: Phase 4 may generate rounds ahead and discover future fixtures, but prediction UIs (web + native) must show only the active/open round. Prediction write paths must reject fixtures whose round is not `open`/`in_progress`. Native must mirror this gating.
+Status: Approved
+
+---
+
+Date: 2026-06-25
 Decision: Add a minimal isolated Vitest setup scoped to pure provider logic only (classification, inclusion/exclusion, friendly detection, deduplication). Module location `src/lib/providers/football/`; env var `API_FOOTBALL_KEY`.
 Reason: Test the high-value pure logic without a DB/network; keep provider specifics sealed.
 Impact: `vitest.config.ts`, `test` script, 20 passing tests.
