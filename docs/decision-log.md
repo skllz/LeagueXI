@@ -138,4 +138,12 @@ Date: 2026-06-25
 Decision: Leaderboard model (Phase 6). (1) Uniqueness: COALESCE-sentinel expression UNIQUE index on (user_id, prediction_context_id, coalesce(round_id,0), coalesce(season_id,0), coalesce(league_id,0)); writer ON CONFLICT reuses the same expressions. (2) League rows: materialize non-global (public/private) league round+season rows; the Global League is served from league_id IS NULL rows (no GLOBAL_LEAGUE_ID rows materialized). (3) Lock: finalization does a final recalculate_leaderboards(R), then the writer skips finalized rounds (status = the lock; immutability per §15). All-Time is computed at query time (sum of round_id IS NULL & league_id IS NULL aggregate rows across contexts), never stored.
 Reason: Idempotent materialization with deterministic NULL handling; avoid all-users write amplification for the global league; honor spec §12/§34/§15.
 Impact: Phase 6A = `0014_leaderboard_entries_unique.sql` (index only). Phase 6B = `recalculate_leaderboards` writer + read RPCs (`0015`), wired into result-sync + finalization, with pure-logic tests + staging idempotency SQL.
-Status: Approved (6A implemented; 6B gated on separate approval)
+Status: Approved (6A implemented `feadd95`; 6B implemented `1f72c25`)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 6B rank semantics = DISTINCT ranks via ROW_NUMBER over the full deterministic tie-break chain (points DESC, correct_scores DESC, correct_outcomes DESC, profiles.created_at ASC, user_id ASC). No shared ranks.
+Reason: LeagueXI may use Round Leaderboards for top-N prizes/promotions; ambiguous tied ranks would complicate winner selection.
+Impact: SQL writer uses row_number(); All-Time read RPC uses row_number(); pure `computeRanks` mirrors it. Every user gets a unique rank.
+Status: Approved

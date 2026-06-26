@@ -8,16 +8,17 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 6A complete** (leaderboard_entries uniqueness index — the hard gate).
-**Phase 6B not started** (leaderboard writer + read RPCs).
+**Phase 6 complete** (leaderboards: 6A uniqueness + 6B writer/reads).
+**Phase 7 not started** (admin panel extensions).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
 - **Phase 2** — new schema tables (steps 10–17) (`5c852b1`).
 - **Phase 3** — football provider abstraction layer (steps 20–25) (`4abc320`).
 - **Phase 4** — sync cron jobs (steps 26–27) (`66261e7`).
-- **Phase 5** — round finalization, status only (step 28) (`eff28a6`). Code-only;
-  no migration (status enum + finalized_at already existed).
+- **Phase 5** — round finalization, status only (step 28) (`eff28a6`). Code-only.
+- **Phase 6A** — leaderboard_entries uniqueness index (`feadd95`).
+- **Phase 6B** — leaderboard writer + read RPCs (steps 29–32) (`1f72c25`).
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
@@ -56,7 +57,10 @@ Path: `supabase/migrations/post-wc/` (see README for run order + isolation rules
   `release_sync_slot` RPCs (pg_advisory_xact_lock atomic claim + TTL lease).
 - `0014_leaderboard_entries_unique.sql` (Phase 6A) — COALESCE-sentinel unique
   index `leaderboard_entries_scope_uidx` on (user, context, round, season,
-  league). The Phase 6B writer's ON CONFLICT must reuse these exact expressions.
+  league). The Phase 6B writer's ON CONFLICT reuses these exact expressions.
+- `0015_leaderboard_writer.sql` (Phase 6B) — `recalculate_leaderboards(p_round_id)`
+  writer + read RPCs `get_round_leaderboard`, `get_season_leaderboard`,
+  `get_all_time_leaderboard`.
 
 ## New tables defined by post-WC migrations (Implemented, not Executed)
 `seasons`, `prediction_contexts`, `leaguexi_rounds`, `tracked_teams`,
@@ -69,6 +73,11 @@ admin/service write).
 - `generate_leaguexi_rounds(p_context_id uuid) → integer` (`0006`, service_role).
 - `claim_sync_slot(p_job text, p_ttl_seconds int) → boolean` (`0013`, service_role).
 - `release_sync_slot(p_job text) → void` (`0013`, service_role).
+- `recalculate_leaderboards(p_round_id uuid) → void` (`0015`, service_role) —
+  writes Global Round/Season + non-global League Round/Season; finalized-guard lock.
+- `get_round_leaderboard(p_round_id uuid, p_league_id uuid default null)` (`0015`, anon/auth).
+- `get_season_leaderboard(p_season_id uuid, p_prediction_context_id uuid, p_league_id uuid default null)` (`0015`, anon/auth).
+- `get_all_time_leaderboard(p_league_id uuid default null)` (`0015`, anon/auth) — computed at query time, cross-context.
 All SECURITY DEFINER, **not executed**.
 
 ## Existing services (TypeScript, Implemented on `post-wc`)
@@ -98,8 +107,10 @@ All SECURITY DEFINER, **not executed**.
   Finished-but-unscored raises a `system_alerts` warning.
 - **Hooks (no push until Phase 8):** `opened[]` → `new_round_opened`;
   `scoredFixtureIds` → match-scored; `finalized[]` → `round_finalized`.
-- **Phase 6 seam:** finalization marks a leaderboard-lock extension point but does
-  NOT write/lock/snapshot `leaderboard_entries` — that is the Phase 6 hard gate.
+- **Phase 6B leaderboard wiring (DONE):** result-sync calls
+  `recalculate_leaderboards` once per scored round (live update); finalization
+  does a final recompute then flips to `finalized` (writer's finalized-guard then
+  locks the leaderboard). `leaderboard.ts` holds the pure tie-break/scope helpers.
 
 ## RLS Policies (post-WC, Implemented in 0002 + per-table P2 files)
 fixtures, predictions, leagues, league_members policies recreated for renamed
@@ -108,10 +119,9 @@ objects (0002). Each P2 table has public-read/admin-write or admin-only policies
 ## Deferred Schema Work
 - **Phase 2B**: create historical `world_cup` context + backfill WC
   `leaderboard_entries` (steps 18–19). Backfill→round_id model undecided.
-- **Phase 6 HARD GATE — index DONE (0014), writer pending**: the COALESCE-sentinel
-  unique index exists (`0014`, written-not-executed). The Phase 6B writer
-  (`recalculate_leaderboards`) and read RPCs are NOT yet built; the writer's
-  ON CONFLICT must reuse the 0014 expressions exactly.
+- **Phase 6 DONE**: uniqueness index (`0014`) + writer/read RPCs (`0015`) written
+  (not executed). Writer ON CONFLICT reuses 0014 expressions; idempotency proven
+  by pure tests + staging run-twice SQL (commented in 0015).
 - `database.ts` types are **hand-edited** — must be regenerated from a migrated
   (staging) DB via `supabase gen types` before cutover.
 
