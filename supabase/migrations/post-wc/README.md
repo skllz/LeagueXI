@@ -33,6 +33,14 @@ store approval (see the spec §27A Cutover Sequencing).
 Run each DDL file inside its own transaction (every file is wrapped in
 `begin; … commit;`). Verification files (`0003`, `0012`) are read-only.
 
+### HARD GATE — Phase 6 (leaderboard_entries)
+
+Before Phase 6 introduces ANY leaderboard writer, `leaderboard_entries` MUST have
+an idempotent uniqueness constraint and a defined upsert strategy implemented
+first (handling nullable `round_id`/`season_id`/`league_id` via COALESCE-based
+unique indexes or equivalent). No writer code lands until that exists. (Directive
+recorded at end of Phase 2.)
+
 ### DEFERRED — Phase 2B (not yet written)
 
 Build-order steps 18–19 (create the historical `world_cup` prediction context +
