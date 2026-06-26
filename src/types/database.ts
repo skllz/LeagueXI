@@ -335,6 +335,374 @@ export type Database = {
           }
         ]
       }
+      seasons: {
+        Row: {
+          id: string
+          name: string
+          start_date: string
+          end_date: string
+          status: "upcoming" | "active" | "completed" | "archived"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          start_date: string
+          end_date: string
+          status?: "upcoming" | "active" | "completed" | "archived"
+        }
+        Update: {
+          name?: string
+          start_date?: string
+          end_date?: string
+          status?: "upcoming" | "active" | "completed" | "archived"
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prediction_contexts: {
+        Row: {
+          id: string
+          name: string
+          type: "standard_leaguexi" | "world_cup"
+          season_id: string | null
+          starts_at: string | null
+          ends_at: string | null
+          status: "upcoming" | "active" | "completed" | "archived"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type: "standard_leaguexi" | "world_cup"
+          season_id?: string | null
+          starts_at?: string | null
+          ends_at?: string | null
+          status?: "upcoming" | "active" | "completed" | "archived"
+        }
+        Update: {
+          name?: string
+          type?: "standard_leaguexi" | "world_cup"
+          season_id?: string | null
+          starts_at?: string | null
+          ends_at?: string | null
+          status?: "upcoming" | "active" | "completed" | "archived"
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_contexts_season_id_fkey"
+            columns: ["season_id"]
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      leaguexi_rounds: {
+        Row: {
+          id: string
+          round_number: number
+          season_id: string
+          prediction_context_id: string
+          start_datetime: string
+          end_datetime: string
+          status:
+            | "draft"
+            | "open"
+            | "in_progress"
+            | "pending_finalization"
+            | "finalized"
+            | "empty"
+            | "cancelled"
+          finalized_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          round_number: number
+          season_id: string
+          prediction_context_id: string
+          start_datetime: string
+          end_datetime: string
+          status?:
+            | "draft"
+            | "open"
+            | "in_progress"
+            | "pending_finalization"
+            | "finalized"
+            | "empty"
+            | "cancelled"
+          finalized_at?: string | null
+        }
+        Update: {
+          round_number?: number
+          start_datetime?: string
+          end_datetime?: string
+          status?:
+            | "draft"
+            | "open"
+            | "in_progress"
+            | "pending_finalization"
+            | "finalized"
+            | "empty"
+            | "cancelled"
+          finalized_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaguexi_rounds_season_id_fkey"
+            columns: ["season_id"]
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaguexi_rounds_prediction_context_id_fkey"
+            columns: ["prediction_context_id"]
+            referencedRelation: "prediction_contexts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      tracked_teams: {
+        Row: {
+          id: string
+          team_id: string
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          active?: boolean
+        }
+        Update: {
+          active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_teams_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      team_provider_mappings: {
+        Row: {
+          id: string
+          team_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_team_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_team_id: string
+        }
+        Update: {
+          provider?: "api_football" | "football_data_org" | "sportmonks"
+          provider_team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_provider_mappings_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      competition_provider_mappings: {
+        Row: {
+          id: string
+          competition_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_competition_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          competition_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_competition_id: string
+        }
+        Update: {
+          provider?: "api_football" | "football_data_org" | "sportmonks"
+          provider_competition_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_provider_mappings_competition_id_fkey"
+            columns: ["competition_id"]
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      fixture_provider_mappings: {
+        Row: {
+          id: string
+          fixture_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_fixture_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          fixture_id: string
+          provider: "api_football" | "football_data_org" | "sportmonks"
+          provider_fixture_id: string
+        }
+        Update: {
+          provider?: "api_football" | "football_data_org" | "sportmonks"
+          provider_fixture_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixture_provider_mappings_fixture_id_fkey"
+            columns: ["fixture_id"]
+            referencedRelation: "fixtures"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sync_logs: {
+        Row: {
+          id: string
+          sync_type: "fixture_discovery" | "match_result_sync"
+          status: "success" | "failed" | "partial_success"
+          started_at: string | null
+          finished_at: string | null
+          error_message: string | null
+          records_processed: number | null
+          provider: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sync_type: "fixture_discovery" | "match_result_sync"
+          status: "success" | "failed" | "partial_success"
+          started_at?: string | null
+          finished_at?: string | null
+          error_message?: string | null
+          records_processed?: number | null
+          provider?: string | null
+        }
+        Update: {
+          status?: "success" | "failed" | "partial_success"
+          finished_at?: string | null
+          error_message?: string | null
+          records_processed?: number | null
+        }
+        Relationships: []
+      }
+      system_alerts: {
+        Row: {
+          id: string
+          severity: "info" | "warning" | "critical"
+          alert_type: "sync_failure" | "sync_stale" | "provider_error" | "fixture_import_error"
+          message: string
+          related_sync_type: string | null
+          is_read: boolean
+          created_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          severity: "info" | "warning" | "critical"
+          alert_type: "sync_failure" | "sync_stale" | "provider_error" | "fixture_import_error"
+          message: string
+          related_sync_type?: string | null
+          is_read?: boolean
+          resolved_at?: string | null
+        }
+        Update: {
+          is_read?: boolean
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
+      leaderboard_entries: {
+        Row: {
+          id: string
+          user_id: string
+          round_id: string | null
+          season_id: string | null
+          prediction_context_id: string
+          league_id: string | null
+          points: number
+          correct_scores: number
+          correct_outcomes: number
+          rank: number | null
+          calculated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          round_id?: string | null
+          season_id?: string | null
+          prediction_context_id: string
+          league_id?: string | null
+          points?: number
+          correct_scores?: number
+          correct_outcomes?: number
+          rank?: number | null
+          calculated_at?: string
+        }
+        Update: {
+          points?: number
+          correct_scores?: number
+          correct_outcomes?: number
+          rank?: number | null
+          calculated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_entries_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_entries_round_id_fkey"
+            columns: ["round_id"]
+            referencedRelation: "leaguexi_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_entries_season_id_fkey"
+            columns: ["season_id"]
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_entries_prediction_context_id_fkey"
+            columns: ["prediction_context_id"]
+            referencedRelation: "prediction_contexts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_entries_league_id_fkey"
+            columns: ["league_id"]
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -432,6 +800,10 @@ export type Database = {
       get_user_league_ids: {
         Args: { p_user_id: string }
         Returns: string[]
+      }
+      generate_leaguexi_rounds: {
+        Args: { p_context_id: string }
+        Returns: number
       }
     }
     Enums: {
