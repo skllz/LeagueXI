@@ -131,3 +131,11 @@ Decision: Phase 5 implements round finalization STATUS ONLY (pending_finalizatio
 Reason: Separate round lifecycle finalization from leaderboard locking; respect the Phase 6 leaderboard idempotency hard gate and Phase 9 fixture resolution.
 Impact: `finalization.ts` (`finalizeEligibleRounds`, `isRoundFinalizable`); result-sync cron wires it after lifecycle; finished-but-unscored raises a system_alert. 5 new tests.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Leaderboard model (Phase 6). (1) Uniqueness: COALESCE-sentinel expression UNIQUE index on (user_id, prediction_context_id, coalesce(round_id,0), coalesce(season_id,0), coalesce(league_id,0)); writer ON CONFLICT reuses the same expressions. (2) League rows: materialize non-global (public/private) league round+season rows; the Global League is served from league_id IS NULL rows (no GLOBAL_LEAGUE_ID rows materialized). (3) Lock: finalization does a final recalculate_leaderboards(R), then the writer skips finalized rounds (status = the lock; immutability per §15). All-Time is computed at query time (sum of round_id IS NULL & league_id IS NULL aggregate rows across contexts), never stored.
+Reason: Idempotent materialization with deterministic NULL handling; avoid all-users write amplification for the global league; honor spec §12/§34/§15.
+Impact: Phase 6A = `0014_leaderboard_entries_unique.sql` (index only). Phase 6B = `recalculate_leaderboards` writer + read RPCs (`0015`), wired into result-sync + finalization, with pure-logic tests + staging idempotency SQL.
+Status: Approved (6A implemented; 6B gated on separate approval)

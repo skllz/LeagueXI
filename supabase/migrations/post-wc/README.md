@@ -30,6 +30,13 @@ store approval (see the spec §27A Cutover Sequencing).
 11. `0011_leaderboard_entries.sql` — leaderboard_entries table (step 17)
 12. `0012_phase2_verification.sql` — read-only checks (run after the above)
 
+**Phase 4 — sync infrastructure:**
+13. `0013_sync_locks.sql` — cron mutex (sync_locks + claim/release RPCs)
+
+**Phase 6A — leaderboard idempotency (hard gate, before any writer):**
+14. `0014_leaderboard_entries_unique.sql` — COALESCE-sentinel unique index on
+    leaderboard_entries (one row per user/context/round/season/league scope).
+
 Run each DDL file inside its own transaction (every file is wrapped in
 `begin; … commit;`). Verification files (`0003`, `0012`) are read-only.
 

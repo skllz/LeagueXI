@@ -8,7 +8,8 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 5 complete** (round finalization, status only). **Phase 6 not started** (leaderboards).
+**Phase 6A complete** (leaderboard_entries uniqueness index — the hard gate).
+**Phase 6B not started** (leaderboard writer + read RPCs).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
@@ -53,6 +54,9 @@ Path: `supabase/migrations/post-wc/` (see README for run order + isolation rules
 - `0012_phase2_verification.sql` — read-only checks.
 - `0013_sync_locks.sql` (Phase 4) — `sync_locks` table + `claim_sync_slot`/
   `release_sync_slot` RPCs (pg_advisory_xact_lock atomic claim + TTL lease).
+- `0014_leaderboard_entries_unique.sql` (Phase 6A) — COALESCE-sentinel unique
+  index `leaderboard_entries_scope_uidx` on (user, context, round, season,
+  league). The Phase 6B writer's ON CONFLICT must reuse these exact expressions.
 
 ## New tables defined by post-WC migrations (Implemented, not Executed)
 `seasons`, `prediction_contexts`, `leaguexi_rounds`, `tracked_teams`,
@@ -104,9 +108,10 @@ objects (0002). Each P2 table has public-read/admin-write or admin-only policies
 ## Deferred Schema Work
 - **Phase 2B**: create historical `world_cup` context + backfill WC
   `leaderboard_entries` (steps 18–19). Backfill→round_id model undecided.
-- **Phase 6 HARD GATE**: `leaderboard_entries` needs an idempotent uniqueness
-  constraint + upsert strategy (COALESCE-based for nullable round/season/league)
-  BEFORE any leaderboard writer is built.
+- **Phase 6 HARD GATE — index DONE (0014), writer pending**: the COALESCE-sentinel
+  unique index exists (`0014`, written-not-executed). The Phase 6B writer
+  (`recalculate_leaderboards`) and read RPCs are NOT yet built; the writer's
+  ON CONFLICT must reuse the 0014 expressions exactly.
 - `database.ts` types are **hand-edited** — must be regenerated from a migrated
   (staging) DB via `supabase gen types` before cutover.
 
