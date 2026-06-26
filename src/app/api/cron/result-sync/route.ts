@@ -13,6 +13,7 @@ import { withSyncLock } from "@/lib/cron/lock"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { runResultSync } from "@/lib/providers/football/result-sync"
 import { advanceRoundLifecycle } from "@/lib/providers/football/rounds"
+import { finalizeEligibleRounds } from "@/lib/providers/football/finalization"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -41,7 +42,9 @@ export async function GET(req: Request) {
     const sync = await runResultSync(db)
     // Reconcile in_progress / pending_finalization off the new fixture states.
     const lifecycle = ctx ? await advanceRoundLifecycle(db, ctx.id) : null
-    return { sync, lifecycle }
+    // Phase 5: finalize eligible rounds (pending_finalization → finalized).
+    const finalization = ctx ? await finalizeEligibleRounds(db, ctx.id) : null
+    return { sync, lifecycle, finalization }
   })
 
   if (run.skipped) {
