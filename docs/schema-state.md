@@ -8,8 +8,8 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 6 complete** (leaderboards: 6A uniqueness + 6B writer/reads).
-**Phase 7 not started** (admin panel extensions).
+**Phase 7 complete** (admin panel extensions, web-only). **Phase 8 not started**
+(new notification types).
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
@@ -19,6 +19,8 @@
 - **Phase 5** — round finalization, status only (step 28) (`eff28a6`). Code-only.
 - **Phase 6A** — leaderboard_entries uniqueness index (`feadd95`).
 - **Phase 6B** — leaderboard writer + read RPCs (steps 29–32) (`1f72c25`).
+- **Phase 7** — admin panel extensions, web-only (steps 33–38) (`15ac931`).
+  Code-only; no migration.
 
 ## Live DB (WC schema — actually deployed, unchanged)
 Tables: `profiles`, `competitions`, `teams`, `matches`, `predictions`, `leagues`,
@@ -92,6 +94,12 @@ All SECURITY DEFINER, **not executed**.
 - **Phase 4 cron routes**: `src/app/api/cron/{fixture-discovery,result-sync}/route.ts`
   + `vercel.json`. Crons fire only on the PRODUCTION deployment (from `main`) —
   inactive until cutover; `vercel.json` presence alone does not activate them.
+- **Phase 7 admin (web-only)**: shared `providers/football/jobs.ts`
+  (`runFixtureDiscoveryJob`/`runResultSyncJob`, used by crons + manual triggers);
+  `app/actions/admin-leaguexi.ts` (team mgmt, generateRounds, context status,
+  fixture inclusion overrides + recompute, updateCompetition, manual sync
+  triggers); admin pages `/admin/{teams,rounds,contexts,fixture-review,sync}` +
+  `components/admin/leaguexi/*`; nav extended. No new RPCs/tables.
 - `src/lib/supabase/admin.ts` — shared service-role client (server-only).
 - Web code (actions/pages/components) updated to the migrated schema names; will
   only run correctly against a migrated DB (staging/cutover).

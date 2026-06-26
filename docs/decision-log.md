@@ -147,3 +147,11 @@ Decision: Phase 6B rank semantics = DISTINCT ranks via ROW_NUMBER over the full 
 Reason: LeagueXI may use Round Leaderboards for top-N prizes/promotions; ambiguous tied ranks would complicate winner selection.
 Impact: SQL writer uses row_number(); All-Time read RPC uses row_number(); pure `computeRanks` mirrors it. Every user gets a unique rank.
 Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Phase 7 admin panel extensions are web-only (§27B). No admin audit-log table for MVP — manual syncs log to sync_logs (+ system_alerts on failure); non-sync admin mutations rely on row updated_at. Shared jobs.ts orchestration used by both crons and admin manual triggers; service-role RPCs invoked only after requireAdmin via createAdminClient; table mutations via the authenticated admin client (RLS double-enforces). Allowlist/blocklist remain code-config (not runtime-editable). Fixture inclusion override recomputes is_included immediately via evaluateInclusion.
+Reason: Operator tooling without scope creep; keep service-role boundaries tight; honor spec §19/§23/§27B.
+Impact: admin-leaguexi.ts + /admin/{teams,rounds,contexts,fixture-review,sync}; classification matchers accept a minimal CompetitionRef. No migration.
+Status: Approved
