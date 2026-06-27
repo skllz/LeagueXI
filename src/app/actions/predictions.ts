@@ -2,6 +2,21 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { canPredict, type RoundStatus, type FixtureStatus } from "@/lib/leaguexi/predict-gate"
+
+// Reads the fixture's round status (null for WC/legacy fixtures with no round).
+type FixtureGateRow = {
+  kickoff_datetime_utc: string
+  status: string
+  round_id: string | null
+  round: { status: string } | { status: string }[] | null
+}
+
+function roundStatusOf(row: FixtureGateRow): RoundStatus | null {
+  if (!row.round_id) return null
+  const r = Array.isArray(row.round) ? row.round[0] : row.round
+  return (r?.status as RoundStatus) ?? null
+}
 
 export async function upsertPrediction(
   matchId: string,
@@ -24,13 +39,22 @@ export async function upsertPrediction(
 
     const { data: match } = await supabase
       .from("fixtures")
-      .select("kickoff_datetime_utc, status")
+      .select("kickoff_datetime_utc, status, round_id, round:leaguexi_rounds!fixtures_round_id_fkey(status)")
       .eq("id", matchId)
       .single()
 
     if (!match) return { error: "Fixture not found" }
-    if (new Date(match.kickoff_datetime_utc) < new Date()) return { error: "This fixture has already kicked off" }
-    if (match.status !== "scheduled") return { error: "Predictions are locked for this fixture" }
+
+    // Predict-current-round-only gate (server-authoritative). Post-WC fixtures
+    // require an open/in_progress round; WC/legacy fixtures (round_id null) keep
+    // their kickoff/status gating only.
+    const gate = canPredict({
+      roundStatus: roundStatusOf(match as FixtureGateRow),
+      fixtureStatus: match.status as FixtureStatus,
+      kickoffIso: match.kickoff_datetime_utc,
+      nowMs: Date.now(),
+    })
+    if (!gate.ok) return { error: gate.reason ?? "Predictions are locked for this fixture" }
 
     if (
       !Number.isInteger(predictedHomeScore) ||
@@ -58,6 +82,8 @@ export async function upsertPrediction(
     if (error) return { error: error.message }
 
     revalidatePath("/matches")
+    revalidatePath("/play")
+    revalidatePath("/rounds", "layout")
     return { success: true }
   } catch (e) {
     if (e != null && typeof e === "object" && "digest" in e) throw e
@@ -76,13 +102,19 @@ export async function deletePrediction(
 
     const { data: match } = await supabase
       .from("fixtures")
-      .select("kickoff_datetime_utc, status")
+      .select("kickoff_datetime_utc, status, round_id, round:leaguexi_rounds!fixtures_round_id_fkey(status)")
       .eq("id", matchId)
       .single()
 
     if (!match) return { error: "Fixture not found" }
-    if (new Date(match.kickoff_datetime_utc) <= new Date()) return { error: "Cannot remove prediction after kickoff" }
-    if (match.status !== "scheduled") return { error: "Predictions are locked for this fixture" }
+
+    const gate = canPredict({
+      roundStatus: roundStatusOf(match as FixtureGateRow),
+      fixtureStatus: match.status as FixtureStatus,
+      kickoffIso: match.kickoff_datetime_utc,
+      nowMs: Date.now(),
+    })
+    if (!gate.ok) return { error: gate.reason ?? "Predictions are locked for this fixture" }
 
     const { error } = await supabase
       .from("predictions")
@@ -93,6 +125,8 @@ export async function deletePrediction(
     if (error) return { error: error.message }
 
     revalidatePath("/matches")
+    revalidatePath("/play")
+    revalidatePath("/rounds", "layout")
     return { success: true }
   } catch (e) {
     if (e != null && typeof e === "object" && "digest" in e) throw e

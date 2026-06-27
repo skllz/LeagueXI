@@ -4,9 +4,9 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — build-order phases 1–10 complete on `post-wc` (Phase 10 = verified,
-no change). Remaining: Phase 2B + cutover execution. No migrations executed; nothing
-deployed; not pushed.
+**In Progress** — build-order phases 1–10 complete; **Phase 11A complete** (post-WC
+Play-First UX foundation). Phase 11B–11E + Phase 2B + cutover remain. No migrations
+executed; nothing deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -15,24 +15,27 @@ deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 10 — proxy 204/null-body: VERIFIED (no change).** The proxy route
-(`src/app/api/supabase-proxy/[...path]/route.ts:106`) already passes a `null` body
-for [101,204,205,304], so void RPCs / DELETE / 304 don't 500. Matches the
-2026-06-20 fix (`HANDOVER.md:379`). Verification = code read; no rebuild. This was
-the last build-order phase — **the post-WC web build is functionally complete**
-(pending Phase 2B + cutover).
+**Phase 11A — post-WC Play-First shell + `/play` + server prediction gate +
+FixturePredictionCard.** App shell `PlayNav` (5 tabs; WC navbar hidden on post-WC
+routes). `/play` renders three **status-driven** states (active / coming_up / gap
+via `resolveHomeState` — never calendar-derived): active shows round card +
+progress ring + Continue Predicting CTA + Still-To-Predict prediction cards.
+**Server gate** `canPredict` wired into `predictions.ts` (round must be
+open/in_progress for post-WC fixtures; WC fixtures with `round_id=null` keep
+kickoff/status gating). `FixturePredictionCard`: per-team vertical +/score/−
+steppers, no typing, autosave EDITING→SAVING→SAVED, LOCKED/COMPLETED. Code-only;
+no migration. `database.ts` gained fixtures→rounds/seasons relationships. tsc clean;
+**61 vitest pass**; lint clean; `next build` ✓.
 
-Prior: **Phase 9 — postponement & abandonment** (`voiding.ts`, auto-void in
-result-sync, admin lifecycle tools, `/admin/fixtures-manage`).
-
-## Files Changed (Phase 9)
-- `src/lib/providers/football/voiding.ts` (+ `__tests__/voiding.test.ts`)
-- `src/lib/providers/football/result-sync.ts` (auto-void)
-- `src/app/actions/admin-leaguexi.ts` (4 lifecycle actions + reconcile)
-- `src/app/admin/fixtures-manage/page.tsx`, `src/app/admin/rounds/page.tsx`,
-  `src/app/admin/layout.tsx` (nav)
-- `src/components/admin/leaguexi/{fixture-lifecycle-actions,cancel-round-button}.tsx`
-- `src/lib/utils/date.ts` (`nowMs`)
+## Files Changed (Phase 11A)
+- `src/lib/leaguexi/predict-gate.ts`, `src/lib/leaguexi/home-state.ts`
+  (+ `__tests__/predict-gate.test.ts`, `__tests__/home-state.test.ts`)
+- `src/app/actions/predictions.ts` (server gate + /play revalidate)
+- `src/components/layout/play-nav.tsx`, `src/components/layout/navbar.tsx` (guard)
+- `src/components/play/{fixture-prediction-card,countdown,round-progress-ring}.tsx`
+- `src/app/play/layout.tsx`, `src/app/play/page.tsx`
+- `src/types/database.ts` (fixtures→leaguexi_rounds/seasons relationships)
+- docs
 - docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
 ## Important Decisions (see decision-log.md)
@@ -61,19 +64,19 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`da86c19`** — `docs(post-wc): update continuity docs for Phase 9` (branch
-`post-wc`); Phase 10 is verification-only (this docs commit follows). Code commits:
-`ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A),
-`eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`f379656`** — `docs(post-wc): Phase 10 verified` (branch `post-wc`); the Phase
+11A commit (code+docs) follows this entry. Code commits: `ca677e7` (P9),
+`2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5),
+`66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 2B** (deferred) — historical `world_cup` prediction context + backfill WC
-`leaderboard_entries` (build steps 18–19). Decide the WC→`round_id` model first
-(tournament-level rows vs synthesized WC rounds), then write `0017_*` (or next
-free number) migration. Present a Phase 2B plan first. Otherwise, the remaining
-work is **cutover execution** (§27A: native store-approved → run migrations
-0001–0016 in order → seed → 2B backfill → deploy → enable crons), which is a
-go-live activity, not a build-phase.
+**Phase 11B — Rounds screen** (`/rounds/[id]` + `/rounds/current` redirect):
+collapsible fixture groups (Still To Predict / Predicted / Locked / Completed)
+using `FixturePredictionCard`, My Predictions view, round leaderboard
+(`get_round_leaderboard`). Then 11C (Leaderboards + league tabs), 11D (Profile,
+no achievements), 11E (sync_stale/consecutive alerts + admin context create).
+Deferred beyond Phase 11: **Phase 2B** (world_cup context + WC backfill) and
+**cutover execution** (§27A). Present each sub-phase plan, get approval, implement.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.

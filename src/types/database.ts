@@ -216,6 +216,18 @@ export type Database = {
             columns: ["away_team_id"]
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_round_id_fkey"
+            columns: ["round_id"]
+            referencedRelation: "leaguexi_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_season_id_fkey"
+            columns: ["season_id"]
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
           }
         ]
       }

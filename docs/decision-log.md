@@ -179,3 +179,11 @@ Decision: Phase 10 (proxy 204/null-body) is verification-only — no rebuild. Th
 Reason: Verification showed no gap; spec §18 concern already addressed.
 Impact: No code change. Phase 10 recorded as Verified (method: code read of supabase-proxy route + HANDOVER record). All build-order phases 1–10 complete.
 Status: Verified
+
+---
+
+Date: 2026-06-25
+Decision: Phase 11A (post-WC Play-First UX foundation). Built /play with three status-driven states (active / coming_up / gap via resolveHomeState — never calendar-derived), a 5-tab app shell (PlayNav: Play/Rounds/Leagues/Leaderboards/Profile; WC navbar hidden on post-WC routes), the server-side predict-current-round-only gate (canPredict in predictions.ts: requires round open/in_progress for post-WC fixtures; WC/legacy fixtures with round_id=null keep kickoff/status gating only), and FixturePredictionCard (per-team vertical +/score/- steppers, no typing, autosave EDITING→SAVING→SAVED, LOCKED/COMPLETED terminal states). Achievements omitted; no notification preferences. Code-only; no migration (database.ts gained fixtures→leaguexi_rounds/seasons relationships for the gate embed).
+Reason: Deliver the Play-First user experience and enforce predict-current-round-only server-side (prior gap). Mockup is the visual source of truth.
+Impact: New routes /play (+ shell); predictions.ts gated; new components. 61 vitest pass; tsc/lint/next build clean. WC routes untouched (coexistence). 11B–11E follow.
+Status: Approved (11A implemented)

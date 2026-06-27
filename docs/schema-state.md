@@ -8,8 +8,19 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 10 verified** (proxy 204/null-body — already fixed, no gap). All build-order
-phases (1–10) complete. Remaining work is Phase 2B + cutover execution (see Deferred).
+**Phase 11A complete** (post-WC Play-First shell + `/play` + server prediction gate
++ FixturePredictionCard). Build-order phases 1–10 done; Phase 11 (post-WC UX) in
+progress — 11A done, 11B–11E pending. Remaining: 11B–11E, Phase 2B, cutover.
+
+## Phase 11 (post-WC UX, Play-First) — sub-phase status
+- **11A done** (`<commit>`): app shell (PlayNav, 5 tabs), `/play` (active /
+  coming_up / gap, status-driven), server-side predict-current-round-only gate
+  (`canPredict`, legacy fallback for WC fixtures with null round_id),
+  FixturePredictionCard (steppers, EDITING→SAVING→SAVED, LOCKED/COMPLETED).
+  Code-only; no migration. WC `/matches` `/leaderboard` untouched (WC navbar hidden
+  on post-WC routes). database.ts: added fixtures→rounds/seasons relationships.
+- **11B** Rounds screen · **11C** Leaderboards + league tabs · **11D** Profile
+  (no achievements) · **11E** sync_stale/consecutive alerts + admin context create.
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).
