@@ -64,8 +64,9 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`94c617c`** — `feat(post-wc): Phase 11D` (branch `post-wc`); the Phase 11E commit
-(code+docs) follows this entry. Code commits: `1a5dca9` (11C), `3fc7413` (11B),
+**`3a9a565`** — `feat(post-wc): maintenance mode (Vercel Edge Config)` (branch
+`post-wc`). Prior: `ed5eeba`/`7f46264` (runbook + decisions), `c96cba3` (11E),
+`94c617c` (11D). Code commits: `1a5dca9` (11C), `3fc7413` (11B),
 `2a8f261` (11A), `ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B),
 `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2),
 `6fd5a3c` (P1).
