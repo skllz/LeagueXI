@@ -219,3 +219,19 @@ Decision: Phase 11E (sync alerting + admin context creation) — final Phase 11 
 Reason: Complete §26 alert rules and §19 context creation; close the Phase 11 ops gaps.
 Impact: sync-health.ts (+tests); jobs.ts evaluator calls; admin-leaguexi resolveAlert + createPredictionContext; alert-row + context-create-form components; sync/contexts pages + admin layout. 89 vitest pass; tsc/lint/next build clean. No migration; no native impact; not pushed. Phase 11 COMPLETE.
 Status: Approved (11E implemented)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 2B (world_cup historical context + WC leaderboard_entries backfill) is DEFERRED to AFTER cutover. The All-Time leaderboard launches without World Cup data and is backfilled later (migration 0017_*). The WC→round_id model is decided when 2B is built.
+Reason: All-Time is computed at query time, so backfilling WC later just makes it appear — no rework; keeps cutover scope minimal.
+Impact: No world_cup migration runs at cutover. Cutover runbook §9 updated.
+Status: Approved
+
+---
+
+Date: 2026-06-25
+Decision: Build maintenance mode as a pre-cutover task — a MAINTENANCE_MODE flag checked in middleware that redirects all non-admin traffic to a /maintenance page; admins retain full access. Toggle without a code deploy. (Toggle MECHANISM pending clarification: a plain Vercel env var requires a redeploy/promote to take effect; true instant no-redeploy toggling needs Vercel Edge Config or a DB flag — to confirm before building.)
+Reason: §27A recommends maintenance mode during the migration window to prevent writes against the old schema mid-migration.
+Impact: middleware.ts gains a maintenance gate; new /maintenance page. Plan presented before building.
+Status: Approved (plan to be confirmed; toggle mechanism open)

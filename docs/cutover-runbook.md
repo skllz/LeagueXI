@@ -134,14 +134,13 @@ own copy from the same migrated schema.)
 12. Confirm the 3 crons are scheduled in Vercel; let the first runs fire (or trigger
     discovery manually via admin) and watch `sync_logs`/`system_alerts`.
 
-## 9. Phase 2B placement (world_cup history)
-Decide BEFORE cutover whether All-Time must include World Cup at launch:
-- If **yes** → write & run `0017_*` (create historical `world_cup` context +
-  backfill `leaderboard_entries`) as part of §4/§8 step 5, after the core tables.
-  Requires the WC→`round_id` model decision (tournament-level rows vs synthesized
-  WC rounds).
-- If **deferred** → launch without WC in All-Time; add `0017` later (All-Time is
-  computed at query time, so backfilling later just makes WC appear — no rework).
+## 9. Phase 2B placement (world_cup history) — DECIDED: DEFERRED post-cutover
+**Decision (2026-06-25): Phase 2B is deferred to AFTER cutover.** The All-Time
+leaderboard launches WITHOUT World Cup data and is backfilled later via `0017_*`
+(create historical `world_cup` context + backfill `leaderboard_entries`). Safe
+because All-Time is computed at query time — backfilling later just makes WC appear,
+no rework. The WC→`round_id` model decision is made when Phase 2B is built. Do NOT
+run any world_cup migration at cutover.
 
 ## 10. Cron enablement
 The 3 crons (`fixture-discovery` 12h, `result-sync` 15m, `locking-reminders` 15m)
