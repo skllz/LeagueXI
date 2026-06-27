@@ -8,19 +8,23 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 11A complete** (post-WC Play-First shell + `/play` + server prediction gate
-+ FixturePredictionCard). Build-order phases 1–10 done; Phase 11 (post-WC UX) in
-progress — 11A done, 11B–11E pending. Remaining: 11B–11E, Phase 2B, cutover.
+**Phase 11B complete** (Rounds screen). Build-order phases 1–10 done; Phase 11
+(post-WC UX) in progress — 11A + 11B done, 11C–11E pending. Remaining: 11C–11E,
+Phase 2B, cutover.
 
 ## Phase 11 (post-WC UX, Play-First) — sub-phase status
-- **11A done** (`<commit>`): app shell (PlayNav, 5 tabs), `/play` (active /
+- **11A done** (`2a8f261`): app shell (PlayNav, 5 tabs), `/play` (active /
   coming_up / gap, status-driven), server-side predict-current-round-only gate
   (`canPredict`, legacy fallback for WC fixtures with null round_id),
   FixturePredictionCard (steppers, EDITING→SAVING→SAVED, LOCKED/COMPLETED).
-  Code-only; no migration. WC `/matches` `/leaderboard` untouched (WC navbar hidden
-  on post-WC routes). database.ts: added fixtures→rounds/seasons relationships.
-- **11B** Rounds screen · **11C** Leaderboards + league tabs · **11D** Profile
-  (no achievements) · **11E** sync_stale/consecutive alerts + admin context create.
+  database.ts: added fixtures→rounds/seasons relationships.
+- **11B done**: `/rounds/[id]` (sub-tabs Fixtures/My Predictions/Leaderboard),
+  `/rounds/current` redirect, `groupRoundFixtures` (Still To Predict/Predicted/
+  Locked/Completed via canPredict), collapsible sections, global round leaderboard
+  (`get_round_leaderboard`), deep-link `?fixture=` focus + `?tab=leaderboard`.
+  Reuses FixturePredictionCard unchanged. Code-only; no migration.
+- **11C** Leaderboards + league tabs · **11D** Profile (no achievements) ·
+  **11E** sync_stale/consecutive alerts + admin context create.
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).

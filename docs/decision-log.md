@@ -187,3 +187,11 @@ Decision: Phase 11A (post-WC Play-First UX foundation). Built /play with three s
 Reason: Deliver the Play-First user experience and enforce predict-current-round-only server-side (prior gap). Mockup is the visual source of truth.
 Impact: New routes /play (+ shell); predictions.ts gated; new components. 61 vitest pass; tsc/lint/next build clean. WC routes untouched (coexistence). 11B–11E follow.
 Status: Approved (11A implemented)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 11B (Rounds screen). /rounds/[id] with sub-tabs Fixtures / My Predictions / Leaderboard; /rounds/current resolves the active/upcoming round and redirects (gap → /play). groupRoundFixtures (pure) buckets included fixtures into Still To Predict / Predicted / Locked / Completed via canPredict; collapsible sections (Still To Predict open by default; a deep-linked fixture expands its group). My Predictions = simple list reusing FixturePredictionCard (filter-chip table deferred). Round Leaderboard = global only via get_round_leaderboard(id) (league scope in 11C). Deep links: ?fixture=<id> scroll+highlight (FixtureFocus); ?tab=leaderboard for round_finalized. FixturePredictionCard reused unchanged across all groups + My Predictions.
+Reason: Deliver the round-detail prediction surface; reuse the canonical card; keep round leaderboard global until league tabs (11C).
+Impact: New /rounds routes; round-groups.ts + components (collapsible, leaderboard list, fixture-focus). 69 vitest pass; tsc/lint/next build clean. No migration; not pushed.
+Status: Approved (11B implemented)

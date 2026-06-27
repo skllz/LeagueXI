@@ -4,9 +4,10 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — build-order phases 1–10 complete; **Phase 11A complete** (post-WC
-Play-First UX foundation). Phase 11B–11E + Phase 2B + cutover remain. No migrations
-executed; nothing deployed; not pushed.
+**In Progress** — build-order phases 1–10 complete; **Phase 11A + 11B complete**
+(post-WC Play-First UX: shell, `/play`, prediction gate, card, Rounds screen).
+Phase 11C–11E + Phase 2B + cutover remain. No migrations executed; nothing
+deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -15,26 +16,24 @@ executed; nothing deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 11A — post-WC Play-First shell + `/play` + server prediction gate +
-FixturePredictionCard.** App shell `PlayNav` (5 tabs; WC navbar hidden on post-WC
-routes). `/play` renders three **status-driven** states (active / coming_up / gap
-via `resolveHomeState` — never calendar-derived): active shows round card +
-progress ring + Continue Predicting CTA + Still-To-Predict prediction cards.
-**Server gate** `canPredict` wired into `predictions.ts` (round must be
-open/in_progress for post-WC fixtures; WC fixtures with `round_id=null` keep
-kickoff/status gating). `FixturePredictionCard`: per-team vertical +/score/−
-steppers, no typing, autosave EDITING→SAVING→SAVED, LOCKED/COMPLETED. Code-only;
-no migration. `database.ts` gained fixtures→rounds/seasons relationships. tsc clean;
-**61 vitest pass**; lint clean; `next build` ✓.
+**Phase 11B — Rounds screen.** `/rounds/[id]` with sub-tabs Fixtures / My
+Predictions / Leaderboard; `/rounds/current` resolves the active/upcoming round and
+redirects (gap → `/play`). `groupRoundFixtures` (pure) buckets included fixtures
+into Still To Predict / Predicted / Locked / Completed via `canPredict`;
+`CollapsibleSection` (Still To Predict open by default; deep-linked fixture expands
+its group). Global round leaderboard via `get_round_leaderboard(id)`. Deep links:
+`?fixture=<id>` scroll+highlight (`FixtureFocus`), `?tab=leaderboard` for
+round_finalized. `FixturePredictionCard` reused unchanged across all groups + My
+Predictions. Code-only; no migration. tsc clean; **69 vitest pass**; lint clean;
+`next build` ✓.
 
-## Files Changed (Phase 11A)
-- `src/lib/leaguexi/predict-gate.ts`, `src/lib/leaguexi/home-state.ts`
-  (+ `__tests__/predict-gate.test.ts`, `__tests__/home-state.test.ts`)
-- `src/app/actions/predictions.ts` (server gate + /play revalidate)
-- `src/components/layout/play-nav.tsx`, `src/components/layout/navbar.tsx` (guard)
-- `src/components/play/{fixture-prediction-card,countdown,round-progress-ring}.tsx`
-- `src/app/play/layout.tsx`, `src/app/play/page.tsx`
-- `src/types/database.ts` (fixtures→leaguexi_rounds/seasons relationships)
+Prior: **Phase 11A** — Play-First shell, `/play`, server prediction gate,
+FixturePredictionCard.
+
+## Files Changed (Phase 11B)
+- `src/lib/leaguexi/round-groups.ts` (+ `__tests__/round-groups.test.ts`)
+- `src/app/rounds/layout.tsx`, `src/app/rounds/[id]/page.tsx`, `src/app/rounds/current/page.tsx`
+- `src/components/play/{collapsible-section,round-leaderboard-list,fixture-focus}.tsx`
 - docs
 - docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
@@ -64,19 +63,18 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`f379656`** — `docs(post-wc): Phase 10 verified` (branch `post-wc`); the Phase
-11A commit (code+docs) follows this entry. Code commits: `ca677e7` (P9),
-`2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5),
-`66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`2a8f261`** — `feat(post-wc): Phase 11A` (branch `post-wc`); the Phase 11B commit
+(code+docs) follows this entry. Code commits: `ca677e7` (P9), `2743fd4` (P8),
+`15ac931` (P7), `1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4),
+`4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 11B — Rounds screen** (`/rounds/[id]` + `/rounds/current` redirect):
-collapsible fixture groups (Still To Predict / Predicted / Locked / Completed)
-using `FixturePredictionCard`, My Predictions view, round leaderboard
-(`get_round_leaderboard`). Then 11C (Leaderboards + league tabs), 11D (Profile,
-no achievements), 11E (sync_stale/consecutive alerts + admin context create).
-Deferred beyond Phase 11: **Phase 2B** (world_cup context + WC backfill) and
-**cutover execution** (§27A). Present each sub-phase plan, get approval, implement.
+**Phase 11C — Leaderboards + league tabs**: `/leaderboards` global screen with
+Round/Season/All-Time tabs (`get_round/season/all_time_leaderboard`); add the same
+three tabs to `/leagues/[slug]` (+ Members). Then 11D (Profile, no achievements),
+11E (sync_stale/consecutive alerts + admin context create). Deferred beyond Phase
+11: **Phase 2B** (world_cup context + WC backfill) and **cutover execution**
+(§27A). Present each sub-phase plan, get approval, implement.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.
