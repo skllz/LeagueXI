@@ -4,10 +4,10 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — build-order phases 1–10 complete; **Phase 11A + 11B complete**
-(post-WC Play-First UX: shell, `/play`, prediction gate, card, Rounds screen).
-Phase 11C–11E + Phase 2B + cutover remain. No migrations executed; nothing
-deployed; not pushed.
+**In Progress** — build-order phases 1–10 complete; **Phase 11A + 11B + 11C
+complete** (post-WC Play-First UX: shell, `/play`, prediction gate, card, Rounds
+screen, Leaderboards + league tabs). Phase 11D–11E + Phase 2B + cutover remain.
+No migrations executed; nothing deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -16,24 +16,22 @@ deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 11B — Rounds screen.** `/rounds/[id]` with sub-tabs Fixtures / My
-Predictions / Leaderboard; `/rounds/current` resolves the active/upcoming round and
-redirects (gap → `/play`). `groupRoundFixtures` (pure) buckets included fixtures
-into Still To Predict / Predicted / Locked / Completed via `canPredict`;
-`CollapsibleSection` (Still To Predict open by default; deep-linked fixture expands
-its group). Global round leaderboard via `get_round_leaderboard(id)`. Deep links:
-`?fixture=<id>` scroll+highlight (`FixtureFocus`), `?tab=leaderboard` for
-round_finalized. `FixturePredictionCard` reused unchanged across all groups + My
-Predictions. Code-only; no migration. tsc clean; **69 vitest pass**; lint clean;
+**Phase 11C — Leaderboards + league tabs.** New `/leaderboards` global screen
+(Round/Season/All-Time tabs, default Season, `?tab`/`?round`, round dropdown).
+`/leagues/[slug]` gained the same three tabs (URL-driven `?tab`), keeping the
+header, Predictions, and Members untouched; league leaderboard data moved to the
+new `get_round/season/all_time_leaderboard` RPCs (scoped by `p_league_id`), and
+"Your rank" is now season-sourced. Shared `RoundLeaderboardList` + new `PillTabs` +
+`RoundSelector`. Code-only; no migration. tsc clean; **75 vitest pass**; lint clean;
 `next build` ✓.
 
-Prior: **Phase 11A** — Play-First shell, `/play`, server prediction gate,
-FixturePredictionCard.
+Prior: **11B** Rounds screen; **11A** Play-First shell + `/play` + gate + card.
 
-## Files Changed (Phase 11B)
-- `src/lib/leaguexi/round-groups.ts` (+ `__tests__/round-groups.test.ts`)
-- `src/app/rounds/layout.tsx`, `src/app/rounds/[id]/page.tsx`, `src/app/rounds/current/page.tsx`
-- `src/components/play/{collapsible-section,round-leaderboard-list,fixture-focus}.tsx`
+## Files Changed (Phase 11C)
+- `src/lib/leaguexi/leaderboard-tabs.ts` (+ `__tests__/leaderboard-tabs.test.ts`)
+- `src/app/leaderboards/layout.tsx`, `src/app/leaderboards/page.tsx`
+- `src/components/play/{pill-tabs,round-selector}.tsx`
+- `src/app/leagues/[slug]/page.tsx` (additive tabs; header untouched)
 - docs
 - docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
@@ -63,18 +61,19 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`2a8f261`** — `feat(post-wc): Phase 11A` (branch `post-wc`); the Phase 11B commit
-(code+docs) follows this entry. Code commits: `ca677e7` (P9), `2743fd4` (P8),
-`15ac931` (P7), `1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4),
-`4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`3fc7413`** — `feat(post-wc): Phase 11B` (branch `post-wc`); the Phase 11C commit
+(code+docs) follows this entry. Code commits: `2a8f261` (11A), `ca677e7` (P9),
+`2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A), `eff28a6` (P5),
+`66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 11C — Leaderboards + league tabs**: `/leaderboards` global screen with
-Round/Season/All-Time tabs (`get_round/season/all_time_leaderboard`); add the same
-three tabs to `/leagues/[slug]` (+ Members). Then 11D (Profile, no achievements),
-11E (sync_stale/consecutive alerts + admin context create). Deferred beyond Phase
-11: **Phase 2B** (world_cup context + WC backfill) and **cutover execution**
-(§27A). Present each sub-phase plan, get approval, implement.
+**Phase 11D — Profile** (`/profile`): user stats (total predictions, exact/correct),
+Prediction Accuracy %, current Season rank + All-Time rank (from
+`get_season_leaderboard`/`get_all_time_leaderboard`), joined leagues with positions.
+**No achievements; no notification preferences.** Then **11E** (sync_stale +
+consecutive-failure alerting; admin context creation). Deferred beyond Phase 11:
+**Phase 2B** (world_cup context + WC backfill) and **cutover execution** (§27A).
+Present each sub-phase plan, get approval, implement.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.

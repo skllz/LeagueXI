@@ -8,9 +8,9 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 11B complete** (Rounds screen). Build-order phases 1–10 done; Phase 11
-(post-WC UX) in progress — 11A + 11B done, 11C–11E pending. Remaining: 11C–11E,
-Phase 2B, cutover.
+**Phase 11C complete** (Leaderboards + league tabs). Build-order phases 1–10 done;
+Phase 11 (post-WC UX) in progress — 11A + 11B + 11C done, 11D–11E pending.
+Remaining: 11D–11E, Phase 2B, cutover.
 
 ## Phase 11 (post-WC UX, Play-First) — sub-phase status
 - **11A done** (`2a8f261`): app shell (PlayNav, 5 tabs), `/play` (active /
@@ -23,8 +23,14 @@ Phase 2B, cutover.
   Locked/Completed via canPredict), collapsible sections, global round leaderboard
   (`get_round_leaderboard`), deep-link `?fixture=` focus + `?tab=leaderboard`.
   Reuses FixturePredictionCard unchanged. Code-only; no migration.
-- **11C** Leaderboards + league tabs · **11D** Profile (no achievements) ·
-  **11E** sync_stale/consecutive alerts + admin context create.
+- **11C done**: `/leaderboards` global screen (Round/Season/All-Time tabs,
+  default Season, `?tab`/`?round`, round dropdown via `selectableRounds`); same
+  three tabs added to `/leagues/[slug]` (URL-driven `?tab`, header untouched,
+  Predictions+Members retained, "Your rank" now season-sourced; league leaderboard
+  data moved from WC `get_league_leaderboard` to the new RPCs). Shared
+  `RoundLeaderboardList` + `PillTabs` + `RoundSelector`. Code-only; no migration.
+- **11D** Profile (no achievements) · **11E** sync_stale/consecutive alerts +
+  admin context create.
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).

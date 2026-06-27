@@ -195,3 +195,11 @@ Decision: Phase 11B (Rounds screen). /rounds/[id] with sub-tabs Fixtures / My Pr
 Reason: Deliver the round-detail prediction surface; reuse the canonical card; keep round leaderboard global until league tabs (11C).
 Impact: New /rounds routes; round-groups.ts + components (collapsible, leaderboard list, fixture-focus). 69 vitest pass; tsc/lint/next build clean. No migration; not pushed.
 Status: Approved (11B implemented)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 11C (Leaderboards + league tabs). New /leaderboards global screen with URL-driven Round/Season/All-Time tabs (default Season; ?tab, ?round); Round tab has a full round dropdown (selectableRounds: open/in_progress/pending_finalization/finalized, most-recent first; default = active round). /leagues/[slug] gains the same three tabs additively (URL-driven ?tab=round|season|all-time|predictions|members, default season): header content untouched; league leaderboard data source moved from WC get_league_leaderboard to get_round/season/all_time_leaderboard scoped by p_league_id; "Your rank" header now sourced from the season league board; Predictions (members) and Members tabs retained. Shared components: RoundLeaderboardList (list), PillTabs (link tab nav), RoundSelector (client dropdown).
+Reason: Deliver the three leaderboard surfaces per spec §12; full round history review per approved decision; reuse the new leaderboard_entries RPCs.
+Impact: New /leaderboards route; league page tab section rewritten (link-driven) while preserving header + Predictions + Members. 75 vitest pass; tsc/lint/next build clean. No migration; not pushed. Production WC users unaffected (main unchanged).
+Status: Approved (11C implemented)

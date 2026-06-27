@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table"
+import { PillTabs } from "@/components/play/pill-tabs"
+import { RoundSelector } from "@/components/play/round-selector"
+import { RoundLeaderboardList, type LeaderboardRow } from "@/components/play/round-leaderboard-list"
+import { selectableRounds, defaultSelectableRoundId } from "@/lib/leaguexi/leaderboard-tabs"
+import type { RoundLite } from "@/lib/leaguexi/home-state"
 import { LeaguePredictions } from "@/components/leagues/league-predictions"
 import { InviteSection } from "@/components/leagues/invite-section"
 import { JoinByCodeForm } from "@/components/leagues/join-by-code-form"
@@ -22,10 +25,12 @@ export default async function LeaguePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ join?: string }>
+  searchParams: Promise<{ join?: string; tab?: string; round?: string }>
 }) {
   const { slug } = await params
-  const { join: joinCode } = await searchParams
+  const { join: joinCode, tab: tabRaw, round: roundParam } = await searchParams
+  const LEAGUE_TABS = ["round", "season", "all-time", "predictions", "members"]
+  const activeTab = LEAGUE_TABS.includes(tabRaw ?? "") ? (tabRaw as string) : "season"
   // Send anonymous visitors through login and back to this exact invite URL
   const loginHref = `/auth/login?next=${encodeURIComponent(
     `/leagues/${slug}${joinCode ? `?join=${joinCode}` : ""}`
@@ -104,11 +109,46 @@ export default async function LeaguePage({
 
   const competitionId = activeComp?.id ?? null
 
-  // Fetch leaderboard — pass competition so scores match the Predictions tab
-  const { data: leaderboardRows } = await supabase.rpc("get_league_leaderboard", {
-    p_league_id: league.id,
-    p_competition_id: competitionId,
-  })
+  // Post-WC league leaderboards: Round / Season / All-Time via the new RPCs,
+  // scoped to this league. Season feeds the Season tab AND the header "Your rank".
+  const { data: ctx } = await supabase
+    .from("prediction_contexts")
+    .select("id, season_id")
+    .eq("type", "standard_leaguexi")
+    .eq("status", "active")
+    .maybeSingle()
+
+  const { data: leagueRoundsRaw } = ctx
+    ? await supabase
+        .from("leaguexi_rounds")
+        .select("id, round_number, status, start_datetime, end_datetime")
+        .eq("prediction_context_id", ctx.id)
+    : { data: [] }
+  const leagueRounds = (leagueRoundsRaw ?? []) as RoundLite[]
+  const selRounds = selectableRounds(leagueRounds)
+  const selectedRoundId = roundParam ?? defaultSelectableRoundId(leagueRounds)
+
+  let seasonRows: LeaderboardRow[] = []
+  if (ctx?.season_id) {
+    const { data } = await supabase.rpc("get_season_leaderboard", {
+      p_season_id: ctx.season_id,
+      p_prediction_context_id: ctx.id,
+      p_league_id: league.id,
+    })
+    seasonRows = (data ?? []) as LeaderboardRow[]
+  }
+
+  let tabRows: LeaderboardRow[] = seasonRows
+  if (activeTab === "round" && selectedRoundId) {
+    const { data } = await supabase.rpc("get_round_leaderboard", {
+      p_round_id: selectedRoundId,
+      p_league_id: league.id,
+    })
+    tabRows = (data ?? []) as LeaderboardRow[]
+  } else if (activeTab === "all-time") {
+    const { data } = await supabase.rpc("get_all_time_leaderboard", { p_league_id: league.id })
+    tabRows = (data ?? []) as unknown as LeaderboardRow[]
+  }
 
   // Fetch league predictions (members only).
   // p_caller_id is passed explicitly — auth.uid() is unreliable inside
@@ -145,8 +185,8 @@ export default async function LeaguePage({
       }
     })
 
-  const currentUserRank = leaderboardRows
-    ? leaderboardRows.findIndex((r) => r.user_id === user?.id) + 1
+  const currentUserRank = user
+    ? (seasonRows.find((r) => r.user_id === user.id)?.rank ?? 0)
     : 0
 
   return (
@@ -239,32 +279,46 @@ export default async function LeaguePage({
         )}
       </div>
 
-      {/* Tabs: Leaderboard + Predictions (members only) + Members */}
-      <Tabs defaultValue="leaderboard">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          {(isMember || isAdmin) && (
-            <TabsTrigger value="predictions">Predictions</TabsTrigger>
-          )}
-          <TabsTrigger value="members">Members ({membersList.length})</TabsTrigger>
-        </TabsList>
+      {/* Tabs: Round / Season / All-Time leaderboards + Predictions (members) + Members */}
+      <PillTabs
+        current={activeTab}
+        tabs={[
+          { key: "round", label: "Round", href: `/leagues/${slug}?tab=round` },
+          { key: "season", label: "Season", href: `/leagues/${slug}?tab=season` },
+          { key: "all-time", label: "All-Time", href: `/leagues/${slug}?tab=all-time` },
+          ...((isMember || isAdmin)
+            ? [{ key: "predictions", label: "Predictions", href: `/leagues/${slug}?tab=predictions` }]
+            : []),
+          { key: "members", label: `Members (${membersList.length})`, href: `/leagues/${slug}?tab=members` },
+        ]}
+      />
 
-        <TabsContent value="leaderboard" className="mt-4">
-          <LeaderboardTable rows={leaderboardRows ?? []} currentUserId={user?.id} />
-        </TabsContent>
-
-        {(isMember || isAdmin) && (
-          <TabsContent value="predictions" className="mt-4">
-            <LeaguePredictions
-              rows={predictionRows ?? []}
-              currentUserId={user!.id}
-              memberCount={membersList.length}
-              members={membersList}
-            />
-          </TabsContent>
+      <div className="mt-4 space-y-3">
+        {activeTab === "round" && (
+          <>
+            {selRounds.length > 0 && (
+              <div className="flex justify-end">
+                <RoundSelector rounds={selRounds} currentRoundId={selectedRoundId} basePath={`/leagues/${slug}`} />
+              </div>
+            )}
+            <RoundLeaderboardList rows={tabRows} currentUserId={user?.id ?? null} />
+          </>
         )}
 
-        <TabsContent value="members" className="mt-4">
+        {(activeTab === "season" || activeTab === "all-time") && (
+          <RoundLeaderboardList rows={tabRows} currentUserId={user?.id ?? null} />
+        )}
+
+        {activeTab === "predictions" && (isMember || isAdmin) && (
+          <LeaguePredictions
+            rows={predictionRows ?? []}
+            currentUserId={user!.id}
+            memberCount={membersList.length}
+            members={membersList}
+          />
+        )}
+
+        {activeTab === "members" && (
           <div className="rounded-xl border border-border overflow-hidden">
             {membersList.map((member, i) => (
               <div
@@ -286,9 +340,7 @@ export default async function LeaguePage({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    #{i + 1}
-                  </span>
+                  <span className="text-xs text-muted-foreground">#{i + 1}</span>
                   {isOwner && member.user_id !== user?.id && (
                     <MemberRemoveButton
                       leagueId={league.id}
@@ -301,8 +353,8 @@ export default async function LeaguePage({
               </div>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   )
 }
