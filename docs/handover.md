@@ -78,6 +78,8 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 execution** (§27A): native store-approved → run migrations 0001–0016 in order →
 seed → 2B backfill → deploy `post-wc` → enable crons → monitor alerts/unclassified.
 Phase 11 (post-WC UX) is COMPLETE; all five nav tabs resolve under the Play-First shell.
+**Cutover runbook:** see `docs/cutover-runbook.md` (sequencing, native deps, staging
+validation, migration order, provider seeding, type regen, cron enablement, rollback).
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.
