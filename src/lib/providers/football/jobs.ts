@@ -15,6 +15,7 @@ import { runResultSync } from "./result-sync"
 import { advanceRoundLifecycle } from "./rounds"
 import { finalizeEligibleRounds } from "./finalization"
 import { isWithinLockingWindow, LOCKING_WINDOW_HOURS } from "./locking-reminders"
+import { evaluateSyncHealth } from "./sync-health"
 import {
   sendMatchScoredNotifications,
   sendNewRoundOpenedNotifications,
@@ -82,6 +83,9 @@ export async function runFixtureDiscoveryJob(db: DB): Promise<
 
     dispatchSyncNotifications({ openedRoundIds: lifecycle.opened })
 
+    // §26 rule-based alerts (stale / consecutive failure), deduped.
+    await evaluateSyncHealth(db)
+
     return { contextId, discovery, lifecycle }
   })
 }
@@ -105,6 +109,9 @@ export async function runResultSyncJob(db: DB): Promise<
       openedRoundIds: lifecycle?.opened,
       finalizedRoundIds: finalization?.finalized,
     })
+
+    // §26 rule-based alerts (stale / consecutive failure), deduped.
+    await evaluateSyncHealth(db)
 
     return { contextId, sync, lifecycle, finalization }
   })

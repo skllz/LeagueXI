@@ -29,10 +29,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!profile?.is_admin) redirect("/")
 
+  // Unread system alerts surface on admin load (spec §26).
+  const { count: unreadAlerts } = await supabase
+    .from("system_alerts")
+    .select("id", { count: "exact", head: true })
+    .eq("is_read", false)
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin</h2>
+        {(unreadAlerts ?? 0) > 0 && (
+          <Link
+            href="/admin/sync"
+            className="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-600/15 text-yellow-500 hover:bg-yellow-600/25 transition-colors"
+          >
+            {unreadAlerts} unread alert{unreadAlerts === 1 ? "" : "s"}
+          </Link>
+        )}
       </div>
       <nav className="flex gap-1 border-b border-border pb-0">
         {adminNav.map((item) => (

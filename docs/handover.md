@@ -4,10 +4,10 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — build-order phases 1–10 complete; **Phase 11A–11D complete**
-(post-WC Play-First UX: shell, `/play`, prediction gate, card, Rounds screen,
-Leaderboards + league tabs, Profile). **11E is the last Phase 11 sub-phase.** Then
-Phase 2B + cutover. No migrations executed; nothing deployed; not pushed.
+**In Progress** — build-order phases 1–10 complete; **Phase 11 COMPLETE (11A–11E)**
+— the full post-WC Play-First UX + ops alerting + context-create. **Remaining work:
+Phase 2B (world_cup context + WC backfill) and cutover execution (§27A).** No
+migrations executed; nothing deployed; not pushed.
 
 ## Current State
 - Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
@@ -16,21 +16,25 @@ Phase 2B + cutover. No migrations executed; nothing deployed; not pushed.
 - Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
 
 ## Last Completed Work
-**Phase 11D — Profile.** `/profile` moved under the Play-First shell (WC navbar
-hidden on `/profile`). Stats reworked to 6 cards: Total Points / Exact Scores /
-Correct Outcomes (All-Time row), Prediction Accuracy % = (exact+correct)/scored
-predictions, Season Rank (`get_season_leaderboard`), All-Time Rank
-(`get_all_time_leaderboard`). Header, Edit Username, Password, My Leagues preserved;
-no achievements/badges/notification prefs. Code-only; no migration. tsc clean;
-**81 vitest pass**; lint clean; `next build` ✓.
+**Phase 11E — sync alerting + admin context creation (Phase 11 complete).**
+`sync-health.ts`: `evaluateSyncHealth(db)` raises deduped `sync_stale` (no
+successful discovery in 12h) + `sync_failure` (3 consecutive failures) warnings,
+called from both sync jobs. Admin `resolveAlert` (is_read + resolved_at; dedup on
+`resolved_at IS NULL`) and `createPredictionContext` (standard_leaguexi only;
+reject a 2nd active context; starts<ends; season must exist). Admin UI: resolve
+button + computed stale banner on `/admin/sync`, context-create form on
+`/admin/contexts`, unread-alerts badge in the admin layout. Code-only; no
+migration. tsc clean; **89 vitest pass**; lint clean; `next build` ✓.
 
-Prior: **11C** Leaderboards + league tabs; **11B** Rounds; **11A** shell + `/play`
-+ gate + card.
+Prior: **11D** Profile; **11C** Leaderboards + league tabs; **11B** Rounds;
+**11A** shell + `/play` + gate + card.
 
-## Files Changed (Phase 11D)
-- `src/lib/leaguexi/profile-stats.ts` (+ `__tests__/profile-stats.test.ts`)
-- `src/app/profile/layout.tsx`, `src/app/profile/page.tsx` (stats rework)
-- `src/components/layout/navbar.tsx` (+`/profile` prefix)
+## Files Changed (Phase 11E)
+- `src/lib/providers/football/sync-health.ts` (+ `__tests__/sync-health.test.ts`)
+- `src/lib/providers/football/jobs.ts` (evaluateSyncHealth calls)
+- `src/app/actions/admin-leaguexi.ts` (`resolveAlert`, `createPredictionContext`)
+- `src/app/admin/sync/page.tsx`, `src/app/admin/contexts/page.tsx`, `src/app/admin/layout.tsx`
+- `src/components/admin/leaguexi/{alert-row,context-create-form}.tsx`
 - docs
 - docs: `schema-state.md`, `decision-log.md`, `handover.md`
 
@@ -60,20 +64,20 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`1a5dca9`** — `feat(post-wc): Phase 11C` (branch `post-wc`); the Phase 11D commit
-(code+docs) follows this entry. Code commits: `3fc7413` (11B), `2a8f261` (11A),
-`ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B), `feadd95` (6A),
-`eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2), `6fd5a3c` (P1).
+**`94c617c`** — `feat(post-wc): Phase 11D` (branch `post-wc`); the Phase 11E commit
+(code+docs) follows this entry. Code commits: `1a5dca9` (11C), `3fc7413` (11B),
+`2a8f261` (11A), `ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B),
+`feadd95` (6A), `eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2),
+`6fd5a3c` (P1).
 
 ## Next Recommended Task
-**Phase 11E (last Phase 11 sub-phase)** — operational, non-UX (already in the
-approved Phase 11 scope): (a) §26 alerting — generate `sync_stale` ("no successful
-fixture_discovery in 12h") and consecutive-failure (`sync_failure`/`provider_error`)
-alerts, deduped, evaluated in the sync jobs and/or on the admin sync page; (b)
-admin **context creation** tool (`createPredictionContext` + form on
-`/admin/contexts`; standard_leaguexi only). Then **Phase 2B** (world_cup context +
-WC backfill) and **cutover execution** (§27A). Present the 11E plan, get approval,
-implement.
+**Phase 2B** (deferred) — historical `world_cup` prediction context + backfill WC
+`leaderboard_entries` (build steps 18–19). Decide the WC→`round_id` model first
+(tournament-level rows vs synthesized WC rounds), then write the next migration
+(`0017_*`). Present a Phase 2B plan first. Otherwise the remaining work is **cutover
+execution** (§27A): native store-approved → run migrations 0001–0016 in order →
+seed → 2B backfill → deploy `post-wc` → enable crons → monitor alerts/unclassified.
+Phase 11 (post-WC UX) is COMPLETE; all five nav tabs resolve under the Play-First shell.
 
 ## Instructions For Next Claude
 1. Read `docs/project-memory.md`, `schema-state.md`, `decision-log.md`, this file.

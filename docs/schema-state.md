@@ -8,9 +8,9 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 11D complete** (Profile). Build-order phases 1–10 done; Phase 11 (post-WC
-UX) in progress — 11A–11D done, **11E pending** (last sub-phase). Remaining: 11E,
-Phase 2B, cutover.
+**Phase 11 COMPLETE** (11A–11E). Build-order phases 1–10 + the full post-WC UX
+(Play/Rounds/Leagues/Leaderboards/Profile) + ops alerting & context-create are done.
+**Remaining: Phase 2B (world_cup context + WC backfill) and cutover execution.**
 
 ## Phase 11 (post-WC UX, Play-First) — sub-phase status
 - **11A done** (`2a8f261`): app shell (PlayNav, 5 tabs), `/play` (active /
@@ -35,7 +35,13 @@ Phase 2B, cutover.
   (`get_season_leaderboard`, `get_all_time_leaderboard`); header, Edit Username,
   Password, My Leagues preserved. No achievements/badges/notification prefs.
   Code-only; no migration. (WC `get_user_rank` no longer called here.)
-- **11E** (last): sync_stale + consecutive-failure alerting; admin context create.
+- **11E done**: §26 sync alerting — `evaluateSyncHealth` raises deduped
+  `sync_stale` (no successful discovery in 12h) + `sync_failure` (3 consecutive
+  failures) alerts (called from both sync jobs); admin `resolveAlert` (is_read +
+  resolved_at, dedup on resolved_at IS NULL); `createPredictionContext`
+  (standard_leaguexi only; one-active rule; starts<ends). Admin UI: resolve button
+  + stale banner on /admin/sync, context create form on /admin/contexts, unread
+  badge in admin layout. Code-only; no migration.
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).

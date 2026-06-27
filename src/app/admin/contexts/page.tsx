@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { ContextRow } from "@/components/admin/leaguexi/context-row"
+import { ContextCreateForm } from "@/components/admin/leaguexi/context-create-form"
 
 export const revalidate = 0
 
@@ -11,11 +12,12 @@ export default async function AdminContextsPage() {
     .select("id, name, type, status, season_id, created_at")
     .order("created_at", { ascending: true })
 
-  const seasonIds = (contexts ?? []).map((c) => c.season_id).filter(Boolean) as string[]
-  const { data: seasons } = seasonIds.length
-    ? await supabase.from("seasons").select("id, name").in("id", seasonIds)
-    : { data: [] }
-  const seasonById = new Map((seasons ?? []).map((s) => [s.id, s.name]))
+  // All seasons — for the create-form selector + name lookup.
+  const { data: allSeasons } = await supabase
+    .from("seasons")
+    .select("id, name")
+    .order("start_date", { ascending: false })
+  const seasonById = new Map((allSeasons ?? []).map((s) => [s.id, s.name]))
 
   return (
     <div className="space-y-4 py-4">
@@ -25,6 +27,8 @@ export default async function AdminContextsPage() {
       <p className="text-xs text-muted-foreground">
         Round and Season leaderboards are filtered by context. (No club_world_cup context in MVP.)
       </p>
+
+      <ContextCreateForm seasons={allSeasons ?? []} />
 
       <div className="rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm">

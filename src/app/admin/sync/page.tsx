@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { SyncControls } from "@/components/admin/leaguexi/sync-controls"
+import { AlertRow } from "@/components/admin/leaguexi/alert-row"
 import { Badge } from "@/components/ui/badge"
+import { isStale } from "@/lib/providers/football/sync-health"
+import { AlertTriangle } from "lucide-react"
 
 export const revalidate = 0
 
@@ -9,10 +12,23 @@ export default async function AdminSyncPage() {
 
   const { data: alerts } = await supabase
     .from("system_alerts")
-    .select("id, severity, alert_type, message, is_read, created_at")
+    .select("id, severity, alert_type, message, is_read, resolved_at, created_at")
     .order("is_read", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(20)
+
+  // Computed (read-only) staleness banner — the persistent sync_stale alert is
+  // raised by the sync jobs' evaluator, not from this page render.
+  const { data: lastOk } = await supabase
+    .from("sync_logs")
+    .select("created_at")
+    .eq("sync_type", "fixture_discovery")
+    .in("status", ["success", "partial_success"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  // eslint-disable-next-line react-hooks/purity -- request-time clock (server component)
+  const discoveryStale = isStale(lastOk?.created_at ?? null, Date.now())
 
   const { data: logs } = await supabase
     .from("sync_logs")
@@ -43,6 +59,14 @@ export default async function AdminSyncPage() {
         )}
       </div>
 
+      {/* Computed staleness banner */}
+      {discoveryStale && (
+        <div className="flex items-center gap-2 rounded-lg border border-yellow-600/30 bg-yellow-600/10 px-3 py-2 text-sm text-yellow-500">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          No successful fixture discovery sync in the last 12 hours.
+        </div>
+      )}
+
       {/* Unread/recent alerts */}
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Alerts</h3>
@@ -57,16 +81,12 @@ export default async function AdminSyncPage() {
                   <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Type</th>
                   <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Message</th>
                   <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">When</th>
+                  <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {(alerts ?? []).map((a) => (
-                  <tr key={a.id} className={`border-t border-border ${a.is_read ? "" : "bg-secondary/30"}`}>
-                    <td className="px-4 py-3"><Badge variant="secondary" className="text-xs">{a.severity}</Badge></td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{a.alert_type}</td>
-                    <td className="px-4 py-3 text-xs">{a.message}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString("en-GB")}</td>
-                  </tr>
+                  <AlertRow key={a.id} alert={a} />
                 ))}
               </tbody>
             </table>

@@ -211,3 +211,11 @@ Decision: Phase 11D (Profile). /profile moved under the Play-First shell (PlayNa
 Reason: Deliver the post-WC Profile per mockup within scope; reuse the leaderboard RPCs.
 Impact: profile/layout.tsx + reworked page; profile-stats.ts helpers (predictionAccuracy, findMyRow) + tests; navbar prefix. 81 vitest pass; tsc/lint/next build clean. No migration; not pushed.
 Status: Approved (11D implemented)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 11E (sync alerting + admin context creation) — final Phase 11 sub-phase. sync-health.ts: pure isStale (12h)/isConsecutiveFailure (3)/shouldRaiseAlert + evaluateSyncHealth(db) raising deduped sync_stale and sync_failure (warning) alerts; called from runFixtureDiscoveryJob and runResultSyncJob each tick. Dedup on resolved_at IS NULL. resolveAlert(id) admin action (is_read+resolved_at). createPredictionContext: standard_leaguexi only (world_cup→2B, club_world_cup excluded), season must exist, starts<ends, status upcoming/active, REJECT a second active standard context (deactivate current first). Admin UI: /admin/sync resolve button + computed stale banner; /admin/contexts create form; admin layout unread-alerts badge (§26).
+Reason: Complete §26 alert rules and §19 context creation; close the Phase 11 ops gaps.
+Impact: sync-health.ts (+tests); jobs.ts evaluator calls; admin-leaguexi resolveAlert + createPredictionContext; alert-row + context-create-form components; sync/contexts pages + admin layout. 89 vitest pass; tsc/lint/next build clean. No migration; no native impact; not pushed. Phase 11 COMPLETE.
+Status: Approved (11E implemented)

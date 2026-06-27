@@ -121,6 +121,77 @@ export async function setContextStatus(
   }
 }
 
+export async function createPredictionContext(input: {
+  name: string
+  seasonId: string
+  startsAt: string
+  endsAt: string
+  status: "upcoming" | "active"
+}): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const { supabase, error } = await requireAdmin()
+    if (error || !supabase) return { error: error ?? "Auth failed" }
+
+    const name = input.name.trim()
+    if (!name) return { error: "Name is required" }
+    if (!input.seasonId) return { error: "Season is required" }
+    if (input.status !== "upcoming" && input.status !== "active") return { error: "Invalid status" }
+    if (!input.startsAt || !input.endsAt) return { error: "Start and end are required" }
+    if (new Date(input.startsAt) >= new Date(input.endsAt)) return { error: "Start must be before end" }
+
+    // Season must exist.
+    const { data: season } = await supabase
+      .from("seasons").select("id").eq("id", input.seasonId).maybeSingle()
+    if (!season) return { error: "Season not found" }
+
+    // At most one active standard_leaguexi context (reject — deactivate first).
+    if (input.status === "active") {
+      const { count } = await supabase
+        .from("prediction_contexts")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "standard_leaguexi")
+        .eq("status", "active")
+      if ((count ?? 0) > 0) {
+        return { error: "An active standard_leaguexi context already exists — set it to completed/archived first." }
+      }
+    }
+
+    // type is fixed to standard_leaguexi (world_cup → Phase 2B; club_world_cup excluded).
+    const { error: insErr } = await supabase.from("prediction_contexts").insert({
+      name,
+      type: "standard_leaguexi",
+      season_id: input.seasonId,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt,
+      status: input.status,
+    })
+    if (insErr) return { error: insErr.message }
+
+    revalidatePath("/admin/contexts")
+    return { success: true }
+  } catch {
+    return { error: "Something went wrong" }
+  }
+}
+
+// ── Sync health: resolve/dismiss an alert ────────────────────────────────────
+export async function resolveAlert(alertId: string): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const { supabase, error } = await requireAdmin()
+    if (error || !supabase) return { error: error ?? "Auth failed" }
+    const { error: upErr } = await supabase
+      .from("system_alerts")
+      .update({ is_read: true, resolved_at: new Date().toISOString() })
+      .eq("id", alertId)
+    if (upErr) return { error: upErr.message }
+    revalidatePath("/admin/sync")
+    revalidatePath("/admin")
+    return { success: true }
+  } catch {
+    return { error: "Something went wrong" }
+  }
+}
+
 // ── Fixture inclusion overrides (+ immediate is_included recompute) ──────────
 export async function setFixtureInclusionOverride(
   fixtureId: string,
