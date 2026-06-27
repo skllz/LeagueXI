@@ -5,7 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LeagueCard } from "@/components/leagues/league-card"
 import { EditUsernameForm } from "@/components/profile/edit-username-form"
 import { SetPasswordForm } from "@/components/profile/set-password-form"
-import { Trophy } from "lucide-react"
+import { findMyRow, predictionAccuracy, type RankRow } from "@/lib/leaguexi/profile-stats"
+import { Trophy, Star, Check, Target, CalendarRange, Medal } from "lucide-react"
 
 export const revalidate = 0
 
@@ -75,26 +76,47 @@ export default async function ProfilePage() {
 
 async function ProfileStats({ userId }: { userId: string }) {
   const supabase = await createClient()
-  const { data } = await supabase.rpc("get_user_rank", { p_user_id: userId })
-  const stats = data?.[0] ?? null
+
+  // Active standard context + season (source for season rank).
+  const { data: ctx } = await supabase
+    .from("prediction_contexts")
+    .select("id, season_id")
+    .eq("type", "standard_leaguexi")
+    .eq("status", "active")
+    .maybeSingle()
+
+  // All-Time totals + rank (cross-context, query-time).
+  const { data: allTimeData } = await supabase.rpc("get_all_time_leaderboard", {})
+  const allTime = findMyRow(allTimeData as unknown as RankRow[], userId)
+
+  // Season rank.
+  let season: RankRow | null = null
+  if (ctx?.season_id) {
+    const { data: seasonData } = await supabase.rpc("get_season_leaderboard", {
+      p_season_id: ctx.season_id,
+      p_prediction_context_id: ctx.id,
+    })
+    season = findMyRow(seasonData as unknown as RankRow[], userId)
+  }
+
+  // Accuracy denominator: the user's scored predictions (points not null).
+  const { count: scored } = await supabase
+    .from("predictions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .not("points", "is", null)
+
+  const hits = (allTime?.correct_scores ?? 0) + (allTime?.correct_outcomes ?? 0)
+  const accuracy = predictionAccuracy(hits, scored ?? 0)
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      <StatCard
-        icon={<Trophy className="w-4 h-4 text-[var(--green)]" />}
-        label="Points"
-        value={stats?.total_points ?? 0}
-      />
-      <StatCard
-        icon={<span className="text-sm">⭐</span>}
-        label="Exact scores"
-        value={stats?.exact_scores ?? 0}
-      />
-      <StatCard
-        icon={<span className="text-sm">✓</span>}
-        label="Global rank"
-        value={stats?.rank ? `#${stats.rank}` : "—"}
-      />
+      <StatCard icon={<Trophy className="w-4 h-4 text-[var(--green)]" />} label="Total points" value={allTime?.points ?? 0} />
+      <StatCard icon={<Star className="w-4 h-4 text-[var(--green)]" />} label="Exact scores" value={allTime?.correct_scores ?? 0} />
+      <StatCard icon={<Check className="w-4 h-4 text-[var(--green)]" />} label="Correct outcomes" value={allTime?.correct_outcomes ?? 0} />
+      <StatCard icon={<Target className="w-4 h-4 text-[var(--green)]" />} label="Accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
+      <StatCard icon={<CalendarRange className="w-4 h-4 text-[var(--green)]" />} label="Season rank" value={season?.rank ? `#${season.rank}` : "—"} />
+      <StatCard icon={<Medal className="w-4 h-4 text-[var(--green)]" />} label="All-time rank" value={allTime?.rank ? `#${allTime.rank}` : "—"} />
     </div>
   )
 }
@@ -139,7 +161,7 @@ async function ProfileLeagues({ userId }: { userId: string }) {
 function StatsSkeleton() {
   return (
     <div className="grid grid-cols-3 gap-3">
-      {[...Array(3)].map((_, i) => (
+      {[...Array(6)].map((_, i) => (
         <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2 text-center">
           <div className="h-8 w-12 mx-auto bg-secondary rounded animate-pulse" />
           <div className="h-3 w-16 mx-auto bg-secondary rounded animate-pulse" />

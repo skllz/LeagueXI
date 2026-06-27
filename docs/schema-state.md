@@ -8,9 +8,9 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 11C complete** (Leaderboards + league tabs). Build-order phases 1–10 done;
-Phase 11 (post-WC UX) in progress — 11A + 11B + 11C done, 11D–11E pending.
-Remaining: 11D–11E, Phase 2B, cutover.
+**Phase 11D complete** (Profile). Build-order phases 1–10 done; Phase 11 (post-WC
+UX) in progress — 11A–11D done, **11E pending** (last sub-phase). Remaining: 11E,
+Phase 2B, cutover.
 
 ## Phase 11 (post-WC UX, Play-First) — sub-phase status
 - **11A done** (`2a8f261`): app shell (PlayNav, 5 tabs), `/play` (active /
@@ -29,8 +29,13 @@ Remaining: 11D–11E, Phase 2B, cutover.
   Predictions+Members retained, "Your rank" now season-sourced; league leaderboard
   data moved from WC `get_league_leaderboard` to the new RPCs). Shared
   `RoundLeaderboardList` + `PillTabs` + `RoundSelector`. Code-only; no migration.
-- **11D** Profile (no achievements) · **11E** sync_stale/consecutive alerts +
-  admin context create.
+- **11D done**: `/profile` under the Play-First shell (WC navbar hidden on
+  /profile); 6 stat cards — Total Points / Exact / Correct Outcomes / Accuracy %
+  (All-Time row + scored-predictions denominator) / Season Rank / All-Time Rank
+  (`get_season_leaderboard`, `get_all_time_leaderboard`); header, Edit Username,
+  Password, My Leagues preserved. No achievements/badges/notification prefs.
+  Code-only; no migration. (WC `get_user_rank` no longer called here.)
+- **11E** (last): sync_stale + consecutive-failure alerting; admin context create.
 
 ## Completed Phases (Implemented + committed on `post-wc`)
 - **Phase 1** — data-model rename migrations + web code refs (`6fd5a3c`).

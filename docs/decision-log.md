@@ -203,3 +203,11 @@ Decision: Phase 11C (Leaderboards + league tabs). New /leaderboards global scree
 Reason: Deliver the three leaderboard surfaces per spec §12; full round history review per approved decision; reuse the new leaderboard_entries RPCs.
 Impact: New /leaderboards route; league page tab section rewritten (link-driven) while preserving header + Predictions + Members. 75 vitest pass; tsc/lint/next build clean. No migration; not pushed. Production WC users unaffected (main unchanged).
 Status: Approved (11C implemented)
+
+---
+
+Date: 2026-06-25
+Decision: Phase 11D (Profile). /profile moved under the Play-First shell (PlayNav; /profile added to navbar POST_WC_PREFIXES). Stats block reworked to 6 cards: Total Points / Exact Scores / Correct Outcomes (from the user's All-Time leaderboard row), Prediction Accuracy % = (exact + correct_outcomes) / scored_predictions (scored = count of predictions with points not null; clamp 0..100; null→"—"), Season Rank (get_season_leaderboard), All-Time Rank (get_all_time_leaderboard). Header, Edit Username, Password, My Leagues preserved. Joined-leagues = simple list (no per-league position). No achievements, badges, or notification preferences. WC get_user_rank no longer called here (left intact for main/WC).
+Reason: Deliver the post-WC Profile per mockup within scope; reuse the leaderboard RPCs.
+Impact: profile/layout.tsx + reworked page; profile-stats.ts helpers (predictionAccuracy, findMyRow) + tests; navbar prefix. 81 vitest pass; tsc/lint/next build clean. No migration; not pushed.
+Status: Approved (11D implemented)

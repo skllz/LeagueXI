@@ -19,7 +19,7 @@ const navLinks = [
 
 // Post-WC routes render their own Play-First shell (PlayNav); hide the WC navbar
 // there so the two chromes don't stack. Other routes (WC) are unaffected.
-const POST_WC_PREFIXES = ["/play", "/rounds", "/leaderboards"]
+const POST_WC_PREFIXES = ["/play", "/rounds", "/leaderboards", "/profile"]
 
 export function Navbar({ user }: NavbarProps) {
   const pathname = usePathname()
