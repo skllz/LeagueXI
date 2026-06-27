@@ -235,3 +235,11 @@ Decision: Build maintenance mode as a pre-cutover task — a MAINTENANCE_MODE fl
 Reason: §27A recommends maintenance mode during the migration window to prevent writes against the old schema mid-migration.
 Impact: middleware.ts gains a maintenance gate; new /maintenance page. Plan presented before building.
 Status: Approved (plan to be confirmed; toggle mechanism open)
+
+---
+
+Date: 2026-06-25
+Decision: Maintenance-mode toggle uses Vercel Edge Config (key: maintenance_mode), read in middleware — true instant toggle with NO redeploy (a plain env var would require a redeploy). Built: src/lib/maintenance.ts (pure shouldBlockForMaintenance + allowlist /maintenance,/auth,/api,/_next), middleware gate (admins bypass; non-admin → /maintenance), /maintenance page, @vercel/edge-config dep. Fail-open: if EDGE_CONFIG unset/unreachable the gate is OFF so a misconfig can't lock the live site. Prereq for cutover: connect an Edge Config store (EDGE_CONFIG env) + create the maintenance_mode key.
+Reason: §27A maintenance window; user required no-redeploy toggling, which a plain env var cannot provide.
+Impact: middleware.ts, src/lib/maintenance.ts (+tests), /maintenance page; runbook §8/§14 updated. 94 vitest pass; tsc/lint/next build clean. No migration; not pushed.
+Status: Approved (built)

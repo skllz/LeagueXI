@@ -8,9 +8,16 @@
 > migrations are **Implemented (files only)**. The live DB still has the WC schema.
 
 ## Current Phase
-**Phase 11 COMPLETE** (11A–11E). Build-order phases 1–10 + the full post-WC UX
-(Play/Rounds/Leagues/Leaderboards/Profile) + ops alerting & context-create are done.
-**Remaining: Phase 2B (world_cup context + WC backfill) and cutover execution.**
+**Phase 11 COMPLETE** (11A–11E) + **Maintenance mode BUILT** (pre-cutover). Build-
+order phases 1–10 + full post-WC UX + ops alerting/context-create + maintenance gate
+done. **Remaining: Phase 2B (deferred post-cutover) and cutover execution.**
+
+## Maintenance mode (pre-cutover, BUILT)
+`src/lib/maintenance.ts` (pure `shouldBlockForMaintenance`) + middleware gate reads
+`maintenance_mode` from **Vercel Edge Config** (fail-open if unconfigured); non-admin
+→ `/maintenance`, admins bypass, `/auth`/`/api`/`/_next` allowlisted. Toggle instantly
+in Edge Config (no redeploy). Prereq: connect an Edge Config store (`EDGE_CONFIG` env)
++ create the `maintenance_mode` key. Dep: `@vercel/edge-config`.
 
 ## Phase 11 (post-WC UX, Play-First) — sub-phase status
 - **11A done** (`2a8f261`): app shell (PlayNav, 5 tabs), `/play` (active /

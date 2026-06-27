@@ -1,6 +1,20 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import type { Database } from "@/types/database"
+import { shouldBlockForMaintenance } from "@/lib/maintenance"
+
+// Reads the maintenance flag from Vercel Edge Config (instant toggle, no redeploy).
+// Fails OPEN (returns false) when Edge Config is unconfigured/unreachable so a
+// misconfiguration can never lock the live site out.
+async function isMaintenanceEnabled(): Promise<boolean> {
+  if (!process.env.EDGE_CONFIG) return false
+  try {
+    const { get } = await import("@vercel/edge-config")
+    return (await get<boolean>("maintenance_mode")) === true
+  } catch {
+    return false
+  }
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -32,6 +46,21 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  // Maintenance mode (pre-cutover): redirect non-admin traffic to /maintenance.
+  // Allowlist (/maintenance, /auth, /api, /_next) keeps login + proxy + crons up.
+  if (await isMaintenanceEnabled()) {
+    const pathname = request.nextUrl.pathname
+    let isAdmin = false
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles").select("is_admin").eq("id", user.id).single()
+      isAdmin = profile?.is_admin ?? false
+    }
+    if (shouldBlockForMaintenance({ enabled: true, pathname, isAdmin })) {
+      return NextResponse.redirect(new URL("/maintenance", request.url))
+    }
+  }
 
   // Protect /admin routes
   if (request.nextUrl.pathname.startsWith("/admin")) {

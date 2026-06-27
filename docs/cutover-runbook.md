@@ -119,8 +119,10 @@ own copy from the same migrated schema.)
 1. Confirm native build is **live & downloadable** in both stores.
 2. Confirm prerequisites (§1) all checked.
 3. **Capture DB backup / PITR checkpoint** (rollback anchor R0).
-4. Put the web app in **maintenance mode** (prevents predictions against the old
-   schema mid-migration).
+4. Put the web app in **maintenance mode**: set `maintenance_mode = true` in the
+   project's **Vercel Edge Config** (instant, no redeploy). Non-admin traffic →
+   `/maintenance`; admins keep full access; `/auth`, `/api` (proxy + crons),
+   `/_next` stay reachable. (Built pre-cutover — see §14.)
 5. Execute migrations `0001`–`0016` (§4) in order; watch the `ADD VALUE` caveat.
    (+ `0017` Phase 2B if in scope.)
 6. Run `0003` + `0012` verification queries; confirm green.
@@ -129,7 +131,7 @@ own copy from the same migrated schema.)
 9. **Deploy post-WC to production**: merge `post-wc` → `main` (Vercel builds `main`;
    `vercel.json` crons become active on this deployment). Ensure prod env vars (§2)
    are set BEFORE this deploy.
-10. Remove maintenance mode.
+10. Remove maintenance mode (Edge Config `maintenance_mode = false`).
 11. Smoke-test production (web §5 list) + confirm native talks to the migrated DB.
 12. Confirm the 3 crons are scheduled in Vercel; let the first runs fire (or trigger
     discovery manually via admin) and watch `sync_logs`/`system_alerts`.
@@ -175,8 +177,23 @@ ready (then set it). Manual admin triggers exist for first-run validation.
 - Keep `eas update` ready for native hotfixes.
 
 ## 13. Open items feeding this runbook
-- Phase 2B world_cup model decision (§9).
+- ✅ Phase 2B world_cup model — DECIDED deferred post-cutover (§9).
+- ✅ Maintenance-mode mechanism — BUILT (Vercel Edge Config; §14).
 - `push-notifications.sql` live-run confirmation.
 - §24 API-Football provider validation sign-off.
-- Production Vercel Pro + env vars provisioning.
-- Maintenance-mode mechanism (how it's toggled) — confirm the chosen approach.
+- Production Vercel Pro + env vars provisioning (incl. **Edge Config store
+  connected** → `EDGE_CONFIG` connection string env var present).
+
+## 14. Maintenance mode (BUILT, pre-cutover)
+- **Mechanism:** `src/lib/supabase/middleware.ts` reads `maintenance_mode`
+  (boolean) from **Vercel Edge Config**; pure gate in `src/lib/maintenance.ts`.
+  Public page at `/maintenance`.
+- **Toggle (instant, no redeploy):** set `maintenance_mode = true|false` in the
+  project's Edge Config store (dashboard or API).
+- **Behavior when ON:** non-admin traffic → `/maintenance`; admins keep full
+  access; `/maintenance`, `/auth`, `/api` (Supabase proxy + crons), `/_next` stay
+  reachable.
+- **Fail-open:** if `EDGE_CONFIG` is unset or unreachable, the gate returns OFF —
+  a misconfiguration can never lock the live site out.
+- **Prereq:** connect an Edge Config store to the production project (provides the
+  `EDGE_CONFIG` env var) and create the `maintenance_mode` key before cutover.
