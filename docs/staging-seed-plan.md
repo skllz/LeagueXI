@@ -44,6 +44,15 @@ The seed writes/affects:
 All seeded rows use **fixed UUIDs** in a recognizable namespace (e.g. fixtures
 `5eed0000-…`) so reset targets them precisely without touching the baseline.
 
+## 1a. Global League (seed creates it — it's NOT seeded by migrations)
+`seed.sql` leaves the Global League commented out, so a freshly-migrated staging DB
+has none. The seed script must **create the Global League first** — id
+`00000000-0000-0000-0000-000000000001`, slug `global`, `visibility=public`,
+**post-WC columns** (`creator_user_id` = the admin user, **no** `competition_id`) —
+**before** setting usernames, so the `handle_profile_username_set` auto-join trigger
+adds each user. (Order: create admin user → create Global League owned by admin →
+create the other users / set usernames.)
+
 ## 2. Users (Admin API; staging passwords)
 | Role | email | username | notes |
 |---|---|---|---|
