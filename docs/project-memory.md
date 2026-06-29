@@ -86,6 +86,18 @@ exclude friendlies/exhibitions/testimonials/charity/preseason.
   (`src/app/api/supabase-proxy/[...path]/route.ts`) must never be disabled.
 - `GLOBAL_LEAGUE_ID = 00000000-0000-0000-0000-000000000001` — never deletable.
 
+## Operational Notes (infra / staging)
+- **Two Vercel projects — verify the target before ANY deploy or env-var change:**
+  - `league-xi` = **production** (leaguexi.io) **+ the Preview** that builds from `post-wc`
+    (Preview env points at the staging Supabase project). This is the **real** project.
+  - `leaguexi` = a **stray empty duplicate** (no env vars, failing builds). **Ignore it.**
+- **`profiles_enforce_is_admin` trigger blocks service-role `is_admin` grants**
+  (`supabase/fix-pending-security.sql`): when `is_admin` is changed by a caller that is not
+  already admin (service_role has `auth.uid()` = null), the trigger silently reverts it. So
+  **seed scripts cannot bootstrap an admin user via a direct DB insert/update** — admin must be
+  granted out-of-band (e.g. temporarily disable the trigger in the SQL editor). Account for this
+  in seeding and in cutover admin provisioning.
+
 ## Long-Term Roadmap (phases)
 P1 data-model migrations ✅ · P2 new schema ✅ · P3 provider layer ✅ ·
 **P4 sync cron jobs (next)** · P5 scoring/round finalization · P6 leaderboards ·
