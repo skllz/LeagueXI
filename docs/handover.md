@@ -4,30 +4,42 @@
 > before trusting this file.
 
 ## Current Status
-**In Progress** — build-order phases 1–10 complete; **Phase 11 COMPLETE (11A–11E)**
-— the full post-WC Play-First UX + ops alerting + context-create. **Remaining work:
-Phase 2B (world_cup context + WC backfill) and cutover execution (§27A).** No
-migrations executed; nothing deployed; not pushed.
+**In Progress — STAGING QA underway.** Build-order phases 1–10 + Phase 11 (post-WC
+Play-First UX) + maintenance mode COMPLETE. Now validating on a **migrated staging
+Supabase + `post-wc` Vercel preview** via `docs/ui-qa-checklist.md`. **Remaining:
+finish UI QA + polish, then Phase 2B (deferred) and cutover execution (§27A).**
 
 ## Current State
-- Branch: **`post-wc`** (ahead of `origin/post-wc`, **unpushed**).
-- `main`: **`ef40370`** (untouched).
-- Working tree: clean at handover (docs commit pending — see below).
-- Live Supabase DB: **WC schema, unchanged**. No post-WC migration executed.
+- Branch: **`post-wc`**, **pushed** to `origin/post-wc` (preview builds from it).
+- `main`: **`ef40370`** (untouched; production unaffected).
+- Live (production) Supabase DB: **WC schema, unchanged** — no post-WC migration ran on it.
+- **Staging**: separate Supabase project (ref `vraigmawyoxfkhlkfeua`), migrated
+  (baseline + 0001–0016), seeded via `scripts/seed-staging.ts`. Vercel **Preview**
+  env points at staging (4 Supabase keys); Production env untouched. Owner on Vercel
+  **Pro** trial (required for crons). `NEXT_PUBLIC_DEFAULT_HOME=play` to be set in
+  Preview so login lands on `/play`.
 
 ## Last Completed Work
-**Phase 11E — sync alerting + admin context creation (Phase 11 complete).**
-`sync-health.ts`: `evaluateSyncHealth(db)` raises deduped `sync_stale` (no
-successful discovery in 12h) + `sync_failure` (3 consecutive failures) warnings,
-called from both sync jobs. Admin `resolveAlert` (is_read + resolved_at; dedup on
-`resolved_at IS NULL`) and `createPredictionContext` (standard_leaguexi only;
-reject a 2nd active context; starts<ends; season must exist). Admin UI: resolve
-button + computed stale banner on `/admin/sync`, context-create form on
-`/admin/contexts`, unread-alerts badge in the admin layout. Code-only; no
-migration. tsc clean; **89 vitest pass**; lint clean; `next build` ✓.
+**Staging QA in progress.** Post-deploy fixes on the preview, all pushed:
+- **`DEFAULT_HOME`** (env-gated `/play` vs `/matches`) wired into all post-auth
+  redirects (commit `76ab1d1`).
+- **`/play` preview sections built** — My League Position (first non-global league
+  else Global; `leaguePositionSummary` + tests) and Round Leaderboard top-3 —
+  which my 11A summary had WRONGLY claimed existed. Verified on staging:
+  qa_player #1 (5) / rival_one (3) / rival_two (0) (commit `2593184`).
+- **Maintenance mode** (Vercel Edge Config) earlier (`3a9a565`).
 
-Prior: **11D** Profile; **11C** Leaderboards + league tabs; **11B** Rounds;
-**11A** shell + `/play` + gate + card.
+Verified working on staging `/play`: round card, progress, Still-To-Predict, My
+League Position, Round Leaderboard. tsc/lint clean; **98 vitest pass**; build OK.
+
+Prior phases: 11A–11E (Play/Rounds/Leagues/Leaderboards/Profile + admin ops),
+1–10 backend. See decision-log.
+
+## Known open polish (logged, not yet built)
+- Coming-up state: "Last Round Recap" card from the mockup not built.
+- Team crests render as initials (`teams.logo_url` null — seed-deferred).
+- `/play` "4/4" during QA = the QA user predicted all 4 (re-run seed `--reset`
+  then seed to restore 3/4). Not a bug.
 
 ## Files Changed (Phase 11E)
 - `src/lib/providers/football/sync-health.ts` (+ `__tests__/sync-health.test.ts`)
@@ -64,14 +76,22 @@ unique, distinct ranks, All-Time query-time); predict-current-round-only.
 - `database.ts` hand-edited (regenerate before cutover). Pre-existing WC lint errors remain.
 
 ## Last Safe Commit
-**`3a9a565`** — `feat(post-wc): maintenance mode (Vercel Edge Config)` (branch
-`post-wc`). Prior: `ed5eeba`/`7f46264` (runbook + decisions), `c96cba3` (11E),
-`94c617c` (11D). Code commits: `1a5dca9` (11C), `3fc7413` (11B),
+**`2593184`** — `feat(post-wc): /play — My League Position + Round Leaderboard
+top-3` (branch `post-wc`, pushed). Prior: `76ab1d1` (DEFAULT_HOME + seed script),
+`3a9a565` (maintenance mode), `c96cba3` (11E), `94c617c` (11D). Code commits: `1a5dca9` (11C), `3fc7413` (11B),
 `2a8f261` (11A), `ca677e7` (P9), `2743fd4` (P8), `15ac931` (P7), `1f72c25` (6B),
 `feadd95` (6A), `eff28a6` (P5), `66261e7` (P4), `4abc320` (P3), `5c852b1` (P2),
 `6fd5a3c` (P1).
 
 ## Next Recommended Task
+**Continue staging UI QA** against `docs/ui-qa-checklist.md` on the `post-wc`
+preview (logged in as `qa.player@staging.leaguexi.test` after a fresh seed):
+`/rounds/[id]` groups, `/leaderboards` tabs + round selector, `/leagues/[slug]`
+tabs, `/profile`, `/maintenance` (toggle Edge Config `maintenance_mode`),
+`/admin/sync` + `/admin/contexts`. Log FAILs as polish; batch-fix after.
+Set `NEXT_PUBLIC_DEFAULT_HOME=play` in Vercel Preview + redeploy so login → `/play`.
+Then optional polish (coming-up recap, crests), then:
+
 **Phase 2B** (deferred) — historical `world_cup` prediction context + backfill WC
 `leaderboard_entries` (build steps 18–19). Decide the WC→`round_id` model first
 (tournament-level rows vs synthesized WC rounds), then write the next migration
