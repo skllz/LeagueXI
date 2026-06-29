@@ -6,6 +6,7 @@ import { LeagueCard } from "@/components/leagues/league-card"
 import { EditUsernameForm } from "@/components/profile/edit-username-form"
 import { SetPasswordForm } from "@/components/profile/set-password-form"
 import { findMyRow, predictionAccuracy, type RankRow } from "@/lib/leaguexi/profile-stats"
+import { signOut } from "@/app/actions/auth"
 import { Trophy, Star, Check, Target, CalendarRange, Medal } from "lucide-react"
 
 export const revalidate = 0
@@ -70,6 +71,16 @@ export default async function ProfilePage() {
           <ProfileLeagues userId={user.id} />
         </Suspense>
       )}
+
+      {/* Sign out — mobile only; on desktop it lives in the PlayNav sidebar. */}
+      <form action={signOut} className="md:hidden pt-2">
+        <button
+          type="submit"
+          className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-secondary/50"
+        >
+          Sign out
+        </button>
+      </form>
     </div>
   )
 }

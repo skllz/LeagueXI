@@ -10,7 +10,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, CalendarRange, Users, Trophy, User } from "lucide-react"
+import { signOut } from "@/app/actions/auth"
+import { Home, CalendarRange, Users, Trophy, User, LogOut } from "lucide-react"
 
 const TABS = [
   { href: "/play", label: "Play", icon: Home, match: (p: string) => p === "/play" },
@@ -48,6 +49,18 @@ export function PlayNav() {
             </Link>
           )
         })}
+
+        {/* Sign out — pinned to the bottom of the sidebar (desktop only; the
+            mobile bottom bar is full, so mobile sign-out lives on /profile). */}
+        <form action={signOut} className="mt-auto border-t border-border pt-2">
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </form>
       </aside>
 
       {/* Mobile bottom tab bar */}
