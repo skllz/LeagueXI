@@ -116,13 +116,23 @@ export async function deletePrediction(
     })
     if (!gate.ok) return { error: gate.reason ?? "Predictions are locked for this fixture" }
 
-    const { error } = await supabase
+    // `.select()` so we can confirm a row was actually removed. Under RLS a
+    // DELETE matching zero *permitted* rows succeeds with 0 rows and no error;
+    // treating that as success is what made removals silently no-op (FAIL-1).
+    // The gate above has already passed, so a permitted prediction should delete —
+    // 0 rows here means the row survived (e.g. a missing/again-broken RLS policy)
+    // and must surface as an error, never a false success.
+    const { data: deleted, error } = await supabase
       .from("predictions")
       .delete()
       .eq("user_id", user.id)
       .eq("fixture_id", matchId)
+      .select("fixture_id")
 
     if (error) return { error: error.message }
+    if (!deleted || deleted.length === 0) {
+      return { error: "Could not remove prediction. Please try again." }
+    }
 
     revalidatePath("/matches")
     revalidatePath("/play")
