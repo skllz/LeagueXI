@@ -5,6 +5,7 @@ import { updatePassword } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DEFAULT_HOME } from "@/lib/home-route"
 
 // Session is established server-side by /auth/callback before redirecting here.
 // updatePassword is a server action that reads HttpOnly session cookies directly —
@@ -33,7 +34,7 @@ export default function ResetPasswordPage() {
       setMessage({ text: result.error, ok: false })
       setLoading(false)
     } else {
-      window.location.href = "/matches"
+      window.location.href = DEFAULT_HOME
     }
   }
 

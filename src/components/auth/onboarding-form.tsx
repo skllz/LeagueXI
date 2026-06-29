@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DEFAULT_HOME } from "@/lib/home-route"
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/
 const RESERVED_USERNAMES = new Set([
@@ -70,7 +71,7 @@ export function OnboardingForm({
       return
     }
 
-    window.location.href = next ?? "/matches"
+    window.location.href = next ?? DEFAULT_HOME
   }
 
   const handleChange = (val: string) => {

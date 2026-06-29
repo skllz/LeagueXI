@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { safeInternalPath } from "@/lib/utils"
+import { DEFAULT_HOME } from "@/lib/home-route"
 
 const VALID_OTP_TYPES = ["signup", "invite", "magiclink", "recovery", "email_change", "email"] as const
 type OtpType = (typeof VALID_OTP_TYPES)[number]
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
         if (profile.is_admin) {
           return NextResponse.redirect(`${base}/admin`)
         }
-        return NextResponse.redirect(`${base}/matches`)
+        return NextResponse.redirect(`${base}${DEFAULT_HOME}`)
       }
     } catch {
       // Profile query failed — fall through to safe defaults
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
     if (next) {
       return NextResponse.redirect(`${base}${next}`)
     }
-    return NextResponse.redirect(`${base}/matches`)
+    return NextResponse.redirect(`${base}${DEFAULT_HOME}`)
   }
 
   return NextResponse.redirect(`${base}/auth/login?error=auth_failed`)

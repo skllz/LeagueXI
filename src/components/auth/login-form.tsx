@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { sendPasswordReset } from "@/app/actions/auth"
 import { safeInternalPath } from "@/lib/utils"
+import { DEFAULT_HOME } from "@/lib/home-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -98,7 +99,7 @@ export function LoginForm() {
         } else if (profile.is_admin) {
           window.location.href = "/admin"
         } else {
-          window.location.href = "/matches"
+          window.location.href = DEFAULT_HOME
         }
       }
     }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { OnboardingForm } from "@/components/auth/onboarding-form"
 import { safeInternalPath } from "@/lib/utils"
+import { DEFAULT_HOME } from "@/lib/home-route"
 
 export default async function OnboardingPage({
   searchParams,
@@ -25,7 +26,7 @@ export default async function OnboardingPage({
     .maybeSingle()
 
   if (profile?.username) {
-    redirect(next ?? "/matches")
+    redirect(next ?? DEFAULT_HOME)
   }
 
   // Do not pre-fill from full_name or email — both can expose PII.

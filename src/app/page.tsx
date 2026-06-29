@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Trophy, Users, Star } from "lucide-react"
 import { CompetitionsShowcase } from "@/components/competitions/competitions-showcase"
+import { DEFAULT_HOME } from "@/lib/home-route"
 
 export default async function LandingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect("/matches")
+  if (user) redirect(DEFAULT_HOME)
   return (
     <div className="flex flex-col">
       {/* Hero */}
