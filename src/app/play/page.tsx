@@ -4,7 +4,10 @@ import { resolveHomeState, predictionProgress, type RoundLite } from "@/lib/leag
 import { RoundProgressRing } from "@/components/play/round-progress-ring"
 import { Countdown } from "@/components/play/countdown"
 import { FixturePredictionCard, type PredictionCardTeam } from "@/components/play/fixture-prediction-card"
-import { CalendarOff, ArrowRight } from "lucide-react"
+import { RoundLeaderboardList, type LeaderboardRow } from "@/components/play/round-leaderboard-list"
+import { leaguePositionSummary } from "@/lib/leaguexi/league-position"
+import { GLOBAL_LEAGUE_ID } from "@/lib/constants"
+import { CalendarOff, ArrowRight, Trophy } from "lucide-react"
 
 export const revalidate = 30
 
@@ -25,7 +28,7 @@ export default async function PlayPage() {
   // Active standard context (source of truth for the season's rounds).
   const { data: ctx } = await supabase
     .from("prediction_contexts")
-    .select("id")
+    .select("id, season_id")
     .eq("type", "standard_leaguexi")
     .eq("status", "active")
     .maybeSingle()
@@ -100,6 +103,36 @@ export default async function PlayPage() {
     (f) => f.status === "scheduled" && new Date(f.kickoff_datetime_utc).getTime() > nowMs && !predictionMap[f.id]
   )
 
+  // ── Round Leaderboard (Top 3 + you) preview ─────────────────────────────────
+  const { data: roundRowsRaw } = await supabase.rpc("get_round_leaderboard", { p_round_id: round.id })
+  const roundRows = (roundRowsRaw ?? []) as LeaderboardRow[]
+  const top3 = roundRows.slice(0, 3)
+  const meInTop3 = user ? top3.some((r) => r.user_id === user.id) : true
+  const meRow = user ? roundRows.find((r) => r.user_id === user.id) : undefined
+  const previewRows = !meInTop3 && meRow ? [...top3, meRow] : top3
+
+  // ── My League Position (first non-global league, else Global) ───────────────
+  let leaguePos: ReturnType<typeof leaguePositionSummary> = null
+  let leagueLabel = ""
+  let leagueHref = "/leaderboards"
+  if (user && ctx.season_id) {
+    const { data: memberships } = await supabase
+      .from("league_members")
+      .select("league_id, joined_at, leagues(name, slug)")
+      .eq("user_id", user.id)
+      .order("joined_at", { ascending: true })
+    const nonGlobal = (memberships ?? []).find((m) => m.league_id !== GLOBAL_LEAGUE_ID)
+    const lg = nonGlobal?.leagues as unknown as { name: string; slug: string } | null
+    leagueLabel = lg?.name ?? "Global League"
+    leagueHref = lg?.slug ? `/leagues/${lg.slug}` : "/leaderboards"
+    const { data: seasonRows } = await supabase.rpc("get_season_leaderboard", {
+      p_season_id: ctx.season_id,
+      p_prediction_context_id: ctx.id,
+      p_league_id: nonGlobal ? nonGlobal.league_id : undefined, // undefined → global rows
+    })
+    leaguePos = leaguePositionSummary((seasonRows ?? []) as LeaderboardRow[], user.id)
+  }
+
   return (
     <Shell>
       {/* Active round card */}
@@ -149,6 +182,39 @@ export default async function PlayPage() {
             />
           ))
         )}
+      </section>
+
+      {/* My League Position */}
+      {leaguePos && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">My League Position</h2>
+          <Link
+            href={leagueHref}
+            className="block rounded-2xl border border-border bg-card p-4 hover:bg-secondary/20 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <Trophy className="w-4 h-4 text-[var(--green)] flex-shrink-0" />
+                <span className="font-medium truncate">{leagueLabel}</span>
+              </div>
+              <span className="font-bold tabular-nums">#{leaguePos.rank}<span className="text-muted-foreground font-normal"> of {leaguePos.total}</span></span>
+            </div>
+            <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+              <span><span className="font-semibold text-foreground tabular-nums">{leaguePos.points}</span> pts</span>
+              <span>{leaguePos.behindLeader === 0 ? "Leading 🏆" : `${leaguePos.behindLeader} behind leader`}</span>
+              {leaguePos.aheadOfNext !== null && <span>{leaguePos.aheadOfNext} ahead of next</span>}
+            </div>
+          </Link>
+        </section>
+      )}
+
+      {/* Round Leaderboard (Top 3) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Round Leaderboard</h2>
+          <Link href="/leaderboards?tab=round" className="text-xs font-medium text-[var(--green)]">View Leaderboard</Link>
+        </div>
+        <RoundLeaderboardList rows={previewRows} currentUserId={user?.id ?? null} />
       </section>
     </Shell>
   )
