@@ -3,7 +3,10 @@
 > Run against the `post-wc` Vercel **Preview** (`league-xi` project, staging Supabase
 > `vraigmawyoxfkhlkfeua`), logged in as `qa_player`. Data: clean `--reset` + re-seed,
 > `qa_admin` granted admin via SQL (trigger bootstrap). Date: 2026-06-29.
-> Status key: PASS / FAIL / N-A / PENDING. **Do not fix until findings are prioritized.**
+> Status key: PASS / FAIL / N-A / PENDING.
+> **RUN COMPLETE (2026-06-29):** both confirmed FAILs root-caused, fixed, and verified —
+> FAIL-1 staging-verified, FAIL-2 preview-verified. Remaining table items are PENDING/optional
+> (round-state SQL toggles, mobile device-mode, subjective visual) — see notes.
 
 ## Prerequisite verification (read-only DB + one admin grant)
 - Active `standard_leaguexi` context + 2026-27 season, R1 `open` / R2 `draft`, 4 open-round
@@ -11,7 +14,7 @@
 - Leaderboards populated: ROUND/SEASON global + league (16 rows); qa 5 / rival_one 3 /
   rival_two 0. ✅  *(an earlier "0 rows" alarm was a bad verify query — `total_points`/`scope`
   columns don't exist; real cols are `points`, scope is encoded by round/season/league nullability.)*
-- qa_player 3/4 after re-seed (fStp unpredicted). ✅ *(now 4/4 — see FAIL-1 side effect.)*
+- qa_player 3/4 after re-seed (fStp unpredicted). ✅ *(left at canonical 3/4 after FAIL-1 verification + cleanup DELETE.)*
 
 ## Section results
 | § | Area | Result | Notes |
@@ -28,8 +31,8 @@
 | 10 | My Predictions tab | PASS | `?tab=my`, editable cards. |
 | 11 | Round leaderboard tab | PASS | `?tab=leaderboard`, you highlighted. |
 | 12 | /leaderboards | PASS | Default Season; Round/Season/All-Time via `?tab=`; Round selector defaults to current round (only 1 round to select → multi-switch N-A). |
-| 13 | /leagues directory | PASS / **FAIL-2** | My Leagues (3) w/ owner badges, counts, visibility icons; Public tab; invite-code Join; Create. **Renders under old WC navbar (FAIL-2).** |
-| 14 | /leagues/[slug] | PASS / **FAIL-2** | Header (rank, invite/share, …menu), tabs Round·Season(default)·All-Time·Predictions·Members; league-scoped standings; Members roster + owner Remove. Same WC-navbar shell. Join-wall (non-member): **N-A** — no non-admin non-member seed user; admin sees full content via admin override (expected). |
+| 13 | /leagues directory | PASS | My Leagues (3) w/ owner badges, counts, visibility icons; Public tab; invite-code Join; Create. **FAIL-2 (WC navbar) now FIXED + preview-verified** — renders under the Play-First shell. |
+| 14 | /leagues/[slug] | PASS | Header (rank, invite/share, …menu), tabs Round·Season(default)·All-Time·Predictions·Members; league-scoped standings; Members roster + owner Remove. **FAIL-2 fixed — now under the Play-First shell.** Join-wall (non-member): **N-A** — no non-admin non-member seed user; admin sees full content via admin override (expected). |
 | 15 | /profile | PASS | Player: Play-First shell; 6 stat cards (5 / 1 / 0 / 100% / #1 / #1); accuracy = (exact+correct)/scored; username+edit, password, My Leagues. **Admin (qa_admin): stats + My Leagues hidden — PASS.** See MINOR-1. |
 | 16 | /maintenance | PASS | `maintenance_mode=true`: non-admin (qa_player/logged-out) any route → /maintenance; admin (qa_admin) bypasses on /admin/* AND /play; /auth/login + /maintenance reachable, no loop, /_next assets load. EDGE_CONFIG-unset fail-open not tested (won't remove var) → code-verified. |
 | 17 | /admin/sync | PASS | Admin nav + "1 unread alert" badge; alerts table (severity/type/msg/when/action); **Resolve** → row dims + badge decrements to 0; recent runs render. Stale "banner" not a distinct element (surfaced via sync_stale alert + badge) → verify-intent; "sync leases" empty ("No lease records yet"). |
@@ -42,7 +45,7 @@
 | 24 | Polish | see findings | Crests = initials (expected, logo_url null). |
 | 5b | Server-gate (predict non-open) | PENDING | Hard to exercise via UI (draft-round fixtures not exposed); treat as code-verified or test via action. |
 
-## Findings (prioritized — NOT yet fixed)
+## Findings (prioritized)
 1. **FAIL-1 (correctness, HIGH) — "× Remove" does not persist. [ROOT-CAUSED · FIXED · STAGING-VERIFIED]**
    *Symptom:* Removing a prediction showed a SAVING spinner and cleared the card (0-0, control
    hidden, drops out of Predicted) with **no error**, but after reload the original prediction
@@ -58,10 +61,20 @@
    add Arsenal 1-0 → × Remove → **reload → prediction gone and stays gone** (Still To Predict 1 /
    Predicted 1). qa_player left at canonical 3/4. tsc/lint/vitest(98) clean. Production untouched
    (migration is files-only there; queued for cutover).
-2. **FAIL-2 (nav consistency, MED-HIGH) — /leagues & /leagues/[slug] use the old WC top navbar**
-   ("Matches"→/matches, "Leaderboard"→/leaderboard, "Leagues") instead of the Play-First left
-   sidebar used by Play/Rounds/Leaderboards/Profile. Contradicts handover "all five nav tabs
-   resolve under the Play-First shell." Inconsistent nav across the 5 tabs; exposes WC routes.
+2. **FAIL-2 (nav consistency, MED-HIGH) — /leagues & /leagues/[slug] used the old WC top navbar. [ROOT-CAUSED · FIXED · PREVIEW-VERIFIED]**
+   *Symptom:* /leagues + /leagues/[slug] rendered under the WC top navbar ("Matches"→/matches,
+   "Leaderboard"→/leaderboard) instead of the Play-First sidebar; the Play-First shell also had no
+   sign-out affordance.
+   *Root cause:* the root layout always renders `<Navbar/>`, which self-hides only for
+   `POST_WC_PREFIXES = [/play,/rounds,/leaderboards,/profile]`; `/leagues` was absent from that list
+   **and** had no `leagues/layout.tsx` to mount `<PlayNav/>`, so it fell through to the WC navbar.
+   *Fix (no route / league-architecture / data changes):* added `src/app/leagues/layout.tsx`
+   (mirrors `play/layout.tsx`; mounts `<PlayNav/>` + `md:pl-56`) covering /leagues, /leagues/[slug],
+   /leagues/create; added `"/leagues"` to `POST_WC_PREFIXES`; added a desktop sign-out in the PlayNav
+   sidebar footer and a mobile sign-out on /profile (both reuse the existing `signOut` server action).
+   *Verification (preview):* commit `8390edd` pushed to `post-wc` → Preview rebuilt. Visual pass —
+   /leagues & /leagues/[slug] under the Play-First shell, WC navbar gone, desktop + mobile sign-out
+   work. tsc/lint/vitest(98)/next build all clean.
 3. **VERIFY-1 (intent) — /play is viewable while logged out** (renders round/steppers/leaderboard,
    no redirect). Checklist §1 says "logged-out → login." Likely intended Play-First-public (writes
    gated per §4), in which case §1 wording is stale — needs product confirmation. /profile gates correctly.
