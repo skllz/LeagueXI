@@ -243,3 +243,35 @@ Decision: Maintenance-mode toggle uses Vercel Edge Config (key: maintenance_mode
 Reason: §27A maintenance window; user required no-redeploy toggling, which a plain env var cannot provide.
 Impact: middleware.ts, src/lib/maintenance.ts (+tests), /maintenance page; runbook §8/§14 updated. 94 vitest pass; tsc/lint/next build clean. No migration; not pushed.
 Status: Approved (built)
+
+---
+
+Date: 2026-06-30
+Decision: Leaderboard RPC contract resolved (P-1). `get_round_leaderboard`, `get_season_leaderboard`, and `get_all_time_leaderboard` gain `p_limit int default 50` and `p_caller_id uuid default null`, plus a new OUT column `is_caller boolean` (default false). They return up to `p_limit` ranked rows: if `p_caller_id` is NULL, or the caller is inside the Top N, return only the Top N (the caller's natural row has `is_caller = true`, never duplicated); if the caller is outside the Top N, append exactly one extra row for the caller (size N+1, `is_caller = true`) preserving the full return schema and the caller's TRUE GLOBAL rank (never renumbered to a display rank). All existing parameters and columns are preserved.
+Reason: Resolve the native-consumed leaderboard contract before freeze and avoid a post-freeze breaking change to a client-facing RPC signature.
+Impact: native-backend-contract.md §2C updated to the resolved contract; P-1 marked RESOLVED. Implementation is an execution task (a migration superseding the 0015 RPC bodies + staging validation + regenerated database.ts) — not yet landed; contract status stays DRAFT until then.
+Status: Approved
+
+---
+
+Date: 2026-06-30
+Decision: Keep `get_league_predictions` OUT label `kickoff_at` as FINAL (P-2). The previously-noted Phase-6 rename to `kickoff_datetime_utc` is rejected. The stale migration comment at `0002:224` is superseded by this decision.
+Reason: Stability of the established client contract outweighs cosmetic naming consistency; renaming would be a breaking change for no functional benefit.
+Impact: native-backend-contract.md §2D marks `kickoff_at` FINAL; removal of the stale `0002:224` comment is repository cleanup for the implementation workstream (the migration is NOT modified in this documentation pass).
+Status: Approved
+
+---
+
+Date: 2026-06-30
+Decision: Helper RPC canonicalization (P-3). The canonical versions of `get_league_by_invite_code`, `get_user_league_ids`, and `is_league_open_for_joining` are those in `supabase/fix-pending-security.sql` (helpers also `fix-rls-recursion.sql`). The known incorrect invite-code helper duplicate (`supabase/fix-critical-c1-c2-c3.sql`) is scheduled for quarantine/removal during the implementation workstream. P-3 is NOT a contract-shape blocker; the quarantine is pre-freeze repository cleanup.
+Reason: Pin a single canonical helper surface so native integrates against one source of truth; defer the actual file cleanup to implementation.
+Impact: native-backend-contract.md §2C/§2D pin the canonical helpers; §3 and §5 reconciled so P-3 reads as a non-blocking repo-cleanup item (resolving the prior §3-vs-§5 inconsistency). No SQL files are renamed or deleted in this documentation pass.
+Status: Approved
+
+---
+
+Date: 2026-06-30
+Decision: Reclassify P-4 (email confirmation). It does NOT block Native Backend Contract freeze; it blocks finalization of the native authentication experience only. The dashboard-verified current state (production email confirmation DISABLED, immediate sign-in after signup) is unchanged, and the Nigerian confirmation-link root cause remains UNKNOWN.
+Reason: Email confirmation affects authentication flow, not backend contract shape; it therefore cannot gate contract freeze. Native may build against the documented authentication assumption and reconcile before finalizing the auth experience.
+Impact: native-backend-contract.md §3 P-4 reclassified and removed from the §5 freeze blockers; remains an outstanding authentication-flow decision. Root-cause investigation still open (UNKNOWN).
+Status: Approved

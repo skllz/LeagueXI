@@ -10,7 +10,7 @@
 
 > **What DRAFT means here:** the backend contract is **FREEZABLE but not yet FROZEN** — the document itself is complete, but unresolved **Pending Contract Decisions** (§3) remain. DRAFT denotes those open decisions, **not** that this document is unfinished. It becomes a frozen contract only when §3 is empty and any resulting changes have landed.
 
-**Source tags used below:** `[Repo]` web repository · `[Docs]` repo docs · `[Cfg-UNAVAILABLE]` Supabase/Vercel dashboard, not in repo · `[Unknown]` not verifiable from repository evidence.
+**Source tags used below:** `[Repo]` web repository · `[Docs]` repo docs · `[Cfg-UNAVAILABLE]` Supabase/Vercel dashboard, not in repo · `[Cfg-VERIFIED]` dashboard value verified directly (dashboard-verified, **not** repository-derived) · `[Unknown]` not verifiable from repository evidence.
 
 ---
 
@@ -59,24 +59,33 @@ This document defines the **backend contract** that a **new, post-WC native appl
 
 | RPC | Signature → Returns | Source | Status |
 |---|---|---|---|
-| `get_round_leaderboard` | `(p_round_id uuid, p_league_id uuid=null)` → `user_id, username, avatar_url, points, correct_scores, correct_outcomes, rank` | `0015:211-236` | **PENDING** (P-1) |
-| `get_season_leaderboard` | `(p_season_id uuid, p_prediction_context_id uuid, p_league_id uuid=null)` → same 7 cols | `0015:239-267` | **PENDING** (P-1) |
-| `get_all_time_leaderboard` | `(p_league_id uuid=null)` → `user_id, username, avatar_url, points (bigint), correct_scores, correct_outcomes, rank` | `0015:273-319` | **PENDING** (P-1) |
+| `get_round_leaderboard` | `(p_round_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points, correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:211-236` + P-1 (decision-log 2026-06-30) | **RESOLVED (P-1)** — impl pending |
+| `get_season_leaderboard` | `(p_season_id uuid, p_prediction_context_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → same 8 cols (incl. `is_caller`) | `0015:239-267` + P-1 | **RESOLVED (P-1)** — impl pending |
+| `get_all_time_leaderboard` | `(p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points (bigint), correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:273-319` + P-1 | **RESOLVED (P-1)** — impl pending |
 | `get_league_for_page` | `(p_slug text)` → `id, name, slug, description, visibility, prize_description, is_archived, creator_user_id` *(competition_id dropped; owner_id→creator_user_id)* | `0002:307-329` | FINAL |
-| `get_league_by_invite_code` | `(p_invite_code text)` → `id, slug, is_archived` *(never leaks invite_code)* | `supabase/fix-pending-security.sql:52-67` | **PENDING-pin** (P-3) |
+| `get_league_by_invite_code` | `(p_invite_code text)` → `id, slug, is_archived` *(never leaks invite_code)* | `supabase/fix-pending-security.sql:52-67` (**canonical**) | **FINAL (P-3 DECIDED)** — canonical pinned; duplicate quarantine is repo cleanup |
 | `transfer_league_ownership` | `(p_league_id, p_caller_id, p_new_owner_id uuid)` → `text` (`'ok'` / error string) | `0002:337-379` | FINAL |
 | `register_device_token` | `(p_token text, p_platform text=null)` → void | `supabase/push-notifications.sql:42-69` | FINAL |
+
+> **Leaderboard Top-N + caller semantics (P-1, RESOLVED — see decision-log 2026-06-30):** the three leaderboard RPCs return up to **`p_limit` (default 50)** ranked rows.
+> - `p_caller_id` NULL → return **only** the Top N.
+> - Caller **inside** Top N → return only the Top N; the caller's natural row carries `is_caller = true` (the caller is **not** duplicated).
+> - Caller **outside** Top N → append **exactly one** extra row for the caller (result size **N+1**) with `is_caller = true`.
+> - The appended caller row preserves the **complete** return schema and always reports the caller's **true global rank** (e.g. `rank = 4237`) — it is **never** renumbered or converted into a display rank.
+> - All non-caller rows have `is_caller = false`.
+>
+> The **contract decision is finalized**; **implementation is pending** (a migration superseding the `0015` RPC bodies + staging validation + regenerated database types).
 
 ### 2D. RPCs — Legacy compatibility surface (exist post-migration; new native should prefer 2C)
 
 | RPC | Note | Source | Status |
 |---|---|---|---|
-| `get_league_predictions` | `(p_league_id, p_caller_id, p_competition_id uuid=null)` → 17 cols incl. **`fixture_id`** (was `match_id`) and **`kickoff_at`** (legacy label, value sourced from `kickoff_datetime_utc`). Requires `auth.uid() = p_caller_id` | `0002:228-296` | FINAL-as-written; **carve-out PENDING** (P-2) |
+| `get_league_predictions` | `(p_league_id, p_caller_id, p_competition_id uuid=null)` → 17 cols incl. **`fixture_id`** (was `match_id`) and **`kickoff_at`** (value sourced from `kickoff_datetime_utc`). Requires `auth.uid() = p_caller_id` | `0002:228-296` | **FINAL (P-2 RESOLVED)** — `kickoff_at` label is final; the Phase-6 rename to `kickoff_datetime_utc` is **rejected**; the stale `0002:224` comment is superseded (comment removal is repo cleanup, not a contract change) |
 | `get_leaderboard` / `get_league_leaderboard` / `get_user_rank` | WC-era global/league boards; signatures unchanged, internals re-pointed to `fixtures`/`finished`; retain `p_competition_id` | `0002:81-206` | FINAL (legacy; superseded by 2C for post-WC) |
 | `recalculate_match_predictions` | **Scoring RPC — legacy name kept** (`p_match_id`), internals use `fixtures`/`fixture_id`/`finished`. Server/admin path, **not native** | `0002:34-70` | FINAL (legacy name, post-WC internals) |
 | `recalculate_leaderboards` | Post-WC leaderboard **writer** (service/internal, not native) | `0015:23-199` | FINAL |
 | `delete_user_account` | `service_role` only; web `/api/account/delete` calls it. Native triggers deletion via that route, not the RPC directly | `0002:385-439` | FINAL |
-| `get_user_league_ids`, `is_league_open_for_joining` | RLS **helpers** (internal); not direct native calls | `supabase/fix-pending-security.sql`, `supabase/fix-rls-recursion.sql` | **PENDING-pin** (P-3) |
+| `get_user_league_ids`, `is_league_open_for_joining` | RLS **helpers** (internal); not direct native calls | `supabase/fix-pending-security.sql`, `supabase/fix-rls-recursion.sql` (**canonical**) | **FINAL (P-3 DECIDED)** — canonical pinned |
 
 > **Scoring distinction:** *Legacy-named compatibility surface* = `recalculate_match_predictions(p_match_id)` (name frozen by spec §11, `0002:30-31`). *Post-WC surface* = `recalculate_leaderboards(p_round_id)` (`0015`). Both are **server/admin-invoked, not native.**
 
@@ -96,7 +105,7 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 - **Email/password + Google OAuth** via `supabase-js`: `signUp`, `signInWithPassword`, `signInWithOAuth({provider:'google'})`, `resetPasswordForEmail` `[Repo: src/components/auth/login-form.tsx:31-105; src/app/actions/auth.ts:31]`. **Apple Sign In is not implemented on web** `[Repo]`; native Apple support `[Unknown]`.
 - **Callback / OTP:** `/auth/callback` handles `token_hash` (types `signup, recovery, magiclink, email_change, email, invite`) via `verifyOtp`, and OAuth `code` via `exchangeCodeForSession` `[Repo: src/app/auth/callback/route.ts:6,25-37]`. Web redirect base derives from `NEXT_PUBLIC_SITE_URL`. **Native needs its own deep-link redirect** (scheme `leaguexi`) — the web callback is web-only.
 - **Onboarding gate:** a user with no `profiles.username` is routed to onboarding `[Repo: src/lib/supabase/middleware.ts:84-111; src/app/auth/callback/route.ts:56]`.
-- Email-confirmation behavior + SMTP provider: **`[Cfg-UNAVAILABLE]`** (see §3 P-4 / §4).
+- **Email confirmation is DISABLED in production** — users are signed in immediately after email/password signup. **`[Cfg-VERIFIED]`** (Supabase dashboard, dashboard-verified — not repository-derived). This is the *current* production setting only; it is **not** a resolution of the signup-contract decision (still open — **§3 P-4**), and it does **not** establish or solve the Nigerian confirmation-link failure root cause, which remains **`[Unknown]`** (§4). **SMTP provider** remains **`[Cfg-UNAVAILABLE]`**.
 
 ### 2G. API routes — `[Repo]`
 
@@ -121,19 +130,20 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 
 | ID | Affected surface | Reason pending | Owner | Freeze impact |
 |---|---|---|---|---|
-| **P-1** | `get_round/season/all_time_leaderboard` IN params (`p_limit`, `p_caller_id` for a Top-50 view) | **Open human decision** under discussion; would change a native-consumed RPC signature | Human Product / Architecture Decision | **BLOCKS FREEZE** |
-| **P-2** | `get_league_predictions` OUT label `kickoff_at` | Migration comment says the label is "cleaned up in Phase 6 RPC work" (`0002:224`); **not done in repo** — may later rename to `kickoff_datetime_utc` | Human Architecture Decision / Implementation Work | **BLOCKS FREEZE** |
-| **P-3** | `get_league_by_invite_code`, `get_user_league_ids`, `is_league_open_for_joining` | Defined **only in loose WC-era files**, not pinned in the `0001`–`0017` set; final live version not guaranteed by the migration source | Documentation Update | DOES NOT BLOCK (shapes simple + rename-independent) — but pin them |
-| **P-4** | Auth signup contract (email-confirmation ON/OFF; enabled provider list) | Email-confirmation status is a prior open product decision; dashboard-only | Human Product Decision + External Configuration | **BLOCKS FREEZE** (changes native signup UX: "check email" vs immediate) |
+| **P-1** — ✓ RESOLVED | `get_round/season/all_time_leaderboard` IN/OUT (Top-50 view) | **RESOLVED:** add `p_limit int default 50`, `p_caller_id uuid default null`, and OUT `is_caller boolean` (default false); caller appended only when outside Top N; **true global rank preserved**; no duplicate caller row (§2C; decision-log 2026-06-30) | Human Product / Architecture Decision | **Does NOT block freeze** — decision made; **implementation pending** (migration + staging + type regen) |
+| **P-2** — ✓ RESOLVED | `get_league_predictions` OUT label `kickoff_at` | **RESOLVED:** keep `kickoff_at` (label FINAL); the Phase-6 rename to `kickoff_datetime_utc` is **rejected**; the stale `0002:224` migration comment is superseded (comment removal is repo cleanup) | Human Architecture Decision | **Does NOT block freeze** |
+| **P-3** — ✓ DECIDED | `get_league_by_invite_code`, `get_user_league_ids`, `is_league_open_for_joining` | **DECISION:** canonical version = `supabase/fix-pending-security.sql` (helpers also `fix-rls-recursion.sql`); canonical surface pinned (§2C/§2D). The known incorrect duplicate is scheduled for **quarantine/removal in the implementation workstream** | Implementation Work (repo cleanup) | **DOES NOT BLOCK** — not a contract-shape blocker; quarantine completed as pre-freeze repo cleanup |
+| **P-4** — RECLASSIFIED | Auth signup contract (email-confirmation ON/OFF; enabled provider list) | Current production state is **dashboard-verified: confirmation DISABLED** (`[Cfg-VERIFIED]`, immediate sign-in after signup); whether to keep it off or re-enable remains an open **authentication-flow** decision; Nigerian confirmation-link root cause remains `[Unknown]` (§4) | Human Product Decision + External Configuration | **Does NOT block contract freeze** — blocks finalization of the **native authentication experience** only |
 | **P-5** | Legacy RPCs' `p_competition_id` parameter removal | `0002:24` defers removal to "Phase 6"; not removed | Human Architecture Decision | DOES NOT BLOCK (new native uses 2C RPCs without it) |
 | **P-6** | Phase 2B `world_cup` context + WC `leaderboard_entries` backfill | Deferred post-cutover; WC→`round_id` model undecided | Human Architecture Decision | DOES NOT BLOCK (adds *data*, not *shape*; All-Time is computed at query time) |
 
 ### Contract stability classification (carried forward)
 
-- **STABLE:** all §2A tables, §2B enums, `get_league_for_page`, `transfer_league_ownership`, `register_device_token`, `recalculate_match_predictions`, legacy `get_leaderboard/get_league_leaderboard/get_user_rank`, §2E push payloads, §2G routes, `GLOBAL_LEAGUE_ID`.
-- **EXPECTED TO CHANGE:** `get_round/season/all_time_leaderboard` (P-1), `get_league_predictions.kickoff_at` (P-2), legacy `p_competition_id` params (P-5).
-- **BLOCKED BY DECISION:** P-1, P-4, P-6.
-- **BLOCKED BY IMPLEMENTATION:** generated-types regeneration (downstream of migration execution); P-2 cleanup if approved.
+- **STABLE:** all §2A tables, §2B enums, `get_league_for_page`, `transfer_league_ownership`, `register_device_token`, `recalculate_match_predictions`, legacy `get_leaderboard/get_league_leaderboard/get_user_rank`, `get_league_predictions` (incl. final `kickoff_at` — P-2), helper RPCs (canonical pinned — P-3), §2E push payloads, §2G routes, `GLOBAL_LEAGUE_ID`.
+- **RESOLVED — implementation pending:** `get_round/season/all_time_leaderboard` Top-N + `is_caller` shape (P-1) — contract FINAL; migration + staging + type regen outstanding.
+- **EXPECTED TO CHANGE:** legacy `p_competition_id` params (P-5, non-blocking).
+- **BLOCKED BY DECISION:** none that block freeze (P-6 WC→`round_id` model is a post-cutover decision; adds data, not native-consumed shape).
+- **BLOCKED BY IMPLEMENTATION (execution, not architecture):** P-1 implementation; generated-types regeneration; P-3 duplicate quarantine; stale P-2 migration-comment removal.
 - **UNKNOWN:** see §4.
 
 ---
@@ -144,7 +154,8 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 
 | Unknown | Source class |
 |---|---|
-| Email-confirmation enabled/disabled (live) | `[Cfg-UNAVAILABLE]` Supabase dashboard |
+| Email-confirmation enabled/disabled (live) | **RESOLVED — `[Cfg-VERIFIED]`: DISABLED** in production (immediate sign-in after signup). Verified directly in the Supabase dashboard; not repository-derived. *(The open product decision of whether to keep it off remains — §3 P-4.)* |
+| Nigerian email **confirmation-link failure root cause** | `[Unknown]` — **not** established or solved by the confirmation-disabled setting; remains an open diagnosis |
 | SMTP provider / default vs custom | `[Cfg-UNAVAILABLE]` |
 | Full enabled OAuth provider list (beyond Google in code) | `[Cfg-UNAVAILABLE]` |
 | Apple Sign In availability (native) | `[Unknown]` (not audited) |
@@ -156,16 +167,26 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 
 ## 5. Backend Freeze Assessment
 
-**FREEZABLE: YES.** Every native-consumed surface is enumerated (§2) and every still-changing / awaiting-decision surface is identified (§3). This document is the freezable contract target.
+**FREEZABLE: YES.** Every native-consumed surface is enumerated (§2) and every contract-shape decision is now resolved (§3). This document is the freezable contract target.
 
-**FROZEN: NO.** The Pending list (§3) is non-empty. What prevents FROZEN:
+**Open contract-shape decisions: NONE.** P-1, P-2, P-3, and P-4 are all resolved / reclassified (this means the contract decisions are settled — **not** that implementation work is complete):
+- **P-1** (leaderboard Top-N + `is_caller`) — RESOLVED (contract shape finalized).
+- **P-2** (`get_league_predictions.kickoff_at`) — RESOLVED (label kept; rename rejected).
+- **P-3** (helper RPC canonicalization) — DECIDED (canonical pinned; **not** a contract-shape blocker).
+- **P-4** (email confirmation) — RECLASSIFIED: does **not** block contract freeze; affects the native **authentication experience** only.
 
-- **P-1** (Top-50 `p_limit`/`p_caller_id`) — open decision on a native-consumed RPC signature.
-- **P-2** (`get_league_predictions.kickoff_at` cleanup) — unfulfilled rename intent on a native-consumed OUT column.
-- **P-4** (email-confirmation / provider) — changes native signup-flow assumptions.
-- **P-3** (helper RPCs not pinned in the migration set) — documentation / pinning gap.
+**FROZEN: NO.** The contract *shape* is finalized, but implementation and verification are still pending — so the document remains **DRAFT** until the workstream below completes.
 
-P-5 and P-6 are pending but do **not** block freeze (they do not change post-WC native-consumed shapes). Until P-1 / P-2 / P-4 (and P-3 pinning) are resolved, this is a **living contract target, not a guarantee** — hence document **Status: DRAFT**.
+#### Remaining before FROZEN (Contract Freeze Workstream)
+
+- **P-1 implementation** (add `p_limit` / `p_caller_id` / `is_caller` to the three leaderboard RPCs);
+- **staging validation**;
+- **generated database types regeneration** (from the migrated schema);
+- **verify implementation matches the documented contract**;
+- **P-3 duplicate quarantine** (remove the known incorrect invite-code helper duplicate);
+- **stale P-2 migration comment removal** (`0002:224`).
+
+P-5 and P-6 remain pending but do **not** block freeze (they do not change post-WC native-consumed shapes). Because the workstream above is still outstanding, this remains a **living contract target, not a guarantee** — hence document **Status: DRAFT**. FROZEN happens only after that workstream lands and the contract is verified.
 
 ---
 
