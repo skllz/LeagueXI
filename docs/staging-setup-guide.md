@@ -45,7 +45,7 @@ recreate the WC schema/RPCs/triggers/RLS:
 9. `supabase/fix-rls-transfer-ownership.sql`
 10. `supabase/fix-misc-issues.sql`
 11. `supabase/fix-pending-security.sql`
-12. `supabase/fix-critical-c1-c2-c3.sql`
+12. ~~`supabase/fix-critical-c1-c2-c3.sql`~~ — **SKIP (superseded — do not run).** Its fixes are fully covered by step 11 (`fix-pending-security.sql`); running it only creates a dead `lookup_league_by_invite_code`. Archived at `supabase/archive/`.
 13. `supabase/account-deletion-fn.sql`
 14. `supabase/push-notifications.sql`
 15. `supabase/seed.sql` — **Part 1 only** (creates the WC competition). The Global
