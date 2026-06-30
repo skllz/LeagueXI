@@ -7,6 +7,8 @@ import { EditUsernameForm } from "@/components/profile/edit-username-form"
 import { SetPasswordForm } from "@/components/profile/set-password-form"
 import { findMyRow, predictionAccuracy, type RankRow } from "@/lib/leaguexi/profile-stats"
 import { signOut } from "@/app/actions/auth"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { Trophy, Star, Check, Target, CalendarRange, Medal } from "lucide-react"
 
 export const revalidate = 0
@@ -29,7 +31,9 @@ export default async function ProfilePage() {
     : "?"
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+    <PageContainer>
+      <PageHeader />
+
       {/* Profile header */}
       <div className="flex items-start gap-4">
         <Avatar className="w-16 h-16">
@@ -81,7 +85,7 @@ export default async function ProfilePage() {
           Sign out
         </button>
       </form>
-    </div>
+    </PageContainer>
   )
 }
 
@@ -173,7 +177,7 @@ function StatsSkeleton() {
   return (
     <div className="grid grid-cols-3 gap-3">
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2 text-center">
+        <div key={i} className="rounded-2xl border border-border bg-card p-4 space-y-2 text-center">
           <div className="h-8 w-12 mx-auto bg-secondary rounded animate-pulse" />
           <div className="h-3 w-16 mx-auto bg-secondary rounded animate-pulse" />
         </div>
@@ -184,9 +188,9 @@ function StatsSkeleton() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 text-center space-y-1">
+    <div className="rounded-2xl border border-border bg-card p-4 text-center space-y-1.5">
       <div className="flex justify-center">{icon}</div>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-2xl font-bold tabular-nums">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   )

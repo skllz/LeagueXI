@@ -4,6 +4,8 @@ import type { RoundLite } from "@/lib/leaguexi/home-state"
 import { PillTabs } from "@/components/play/pill-tabs"
 import { RoundSelector } from "@/components/play/round-selector"
 import { RoundLeaderboardList, type LeaderboardRow } from "@/components/play/round-leaderboard-list"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { Trophy } from "lucide-react"
 
 export const revalidate = 30
@@ -80,14 +82,11 @@ function Shell({ tab, children }: { tab: string; children: React.ReactNode }) {
     { key: "all-time", label: "All-Time", href: "/leaderboards?tab=all-time" },
   ]
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-      <div className="flex items-center gap-2">
-        <Trophy className="w-6 h-6 text-[var(--green)]" />
-        <h1 className="text-2xl font-bold">Leaderboards</h1>
-      </div>
+    <PageContainer>
+      <PageHeader icon={<Trophy className="w-6 h-6 text-[var(--green)]" />} title="Leaderboards" />
       <PillTabs tabs={tabs} current={tab} />
       {children}
-    </div>
+    </PageContainer>
   )
 }
 

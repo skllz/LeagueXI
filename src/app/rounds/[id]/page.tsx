@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { canPredict, type RoundStatus } from "@/lib/leaguexi/predict-gate"
@@ -6,8 +5,12 @@ import { groupRoundFixtures } from "@/lib/leaguexi/round-groups"
 import { FixturePredictionCard, type PredictionCardTeam } from "@/components/play/fixture-prediction-card"
 import { CollapsibleSection } from "@/components/play/collapsible-section"
 import { RoundLeaderboardList, type LeaderboardRow } from "@/components/play/round-leaderboard-list"
+import { RoundProgressRing } from "@/components/play/round-progress-ring"
 import { FixtureFocus } from "@/components/play/fixture-focus"
 import { Countdown } from "@/components/play/countdown"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
+import { PillTabs } from "@/components/play/pill-tabs"
 
 export const revalidate = 30
 
@@ -89,24 +92,28 @@ export default async function RoundPage({
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Round {round.round_number}</h1>
-          <StatusBadge status={roundStatus} />
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          <RoundTiming status={roundStatus} start={round.start_datetime} end={round.end_datetime} />
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={<>Round {round.round_number}<StatusBadge status={roundStatus} /></>}
+        subtitle={<RoundTiming status={roundStatus} start={round.start_datetime} end={round.end_datetime} />}
+        aside={
+          fixtures.length > 0 ? (
+            <RoundProgressRing
+              predicted={fixtures.filter((f) => predictionMap[f.id]).length}
+              total={fixtures.length}
+            />
+          ) : undefined
+        }
+      />
 
-      {/* Sub-tabs */}
-      <nav className="flex gap-1 rounded-xl bg-secondary/50 p-1 text-sm">
-        <TabLink id={id} tab="fixtures" current={tab} label="Fixtures" />
-        <TabLink id={id} tab="my" current={tab} label="My Predictions" />
-        <TabLink id={id} tab="leaderboard" current={tab} label="Leaderboard" />
-      </nav>
+      <PillTabs
+        current={tab}
+        tabs={[
+          { key: "fixtures", label: "Fixtures", href: `/rounds/${id}?tab=fixtures` },
+          { key: "my", label: "My Predictions", href: `/rounds/${id}?tab=my` },
+          { key: "leaderboard", label: "Leaderboard", href: `/rounds/${id}?tab=leaderboard` },
+        ]}
+      />
 
       {tab === "fixtures" && (
         <FixturesTab
@@ -128,7 +135,7 @@ export default async function RoundPage({
       )}
 
       <FixtureFocus />
-    </div>
+    </PageContainer>
   )
 }
 
@@ -211,20 +218,6 @@ async function LeaderboardTab({
 }
 
 // ── Bits ──────────────────────────────────────────────────────────────────────
-function TabLink({ id, tab, current, label }: { id: string; tab: Tab; current: Tab; label: string }) {
-  const active = tab === current
-  return (
-    <Link
-      href={`/rounds/${id}?tab=${tab}`}
-      className={`flex-1 text-center rounded-lg px-3 py-1.5 font-medium transition-colors ${
-        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {label}
-    </Link>
-  )
-}
-
 const STATUS_LABEL: Record<string, string> = {
   draft: "Upcoming", open: "Open", in_progress: "In progress",
   pending_finalization: "Awaiting results", finalized: "Finalized",

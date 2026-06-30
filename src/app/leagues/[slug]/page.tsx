@@ -16,6 +16,8 @@ import {
   MemberRemoveButton,
   LeaveLeagueButton,
 } from "@/components/leagues/league-actions"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { Globe, Lock, Archive, Trophy, AlertTriangle } from "lucide-react"
 
 export const revalidate = 30
@@ -190,7 +192,9 @@ export default async function LeaguePage({
     : 0
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <PageContainer>
+      <PageHeader />
+
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
@@ -229,7 +233,7 @@ export default async function LeaguePage({
 
         {/* Prize */}
         {league.prize_description?.trim() && (
-          <div className="rounded-lg border border-yellow-600/20 bg-yellow-600/5 p-3 space-y-2">
+          <div className="rounded-xl border border-yellow-600/20 bg-yellow-600/5 p-4 space-y-2">
             <div className="flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-yellow-500" />
               <span className="text-sm font-semibold text-yellow-500">Prize</span>
@@ -244,8 +248,9 @@ export default async function LeaguePage({
 
         {/* Your rank */}
         {isMember && currentUserRank > 0 && (
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Your rank:</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 px-3 py-1 text-sm">
+            <Trophy className="w-3.5 h-3.5 text-[var(--green)]" />
+            <span className="text-muted-foreground">Your rank</span>
             <span className="font-bold text-[var(--green)]">#{currentUserRank}</span>
           </div>
         )}
@@ -319,7 +324,7 @@ export default async function LeaguePage({
         )}
 
         {activeTab === "members" && (
-          <div className="rounded-xl border border-border overflow-hidden">
+          <div className="rounded-2xl border border-border overflow-hidden">
             {membersList.map((member, i) => (
               <div
                 key={member.user_id}
@@ -355,6 +360,6 @@ export default async function LeaguePage({
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   )
 }

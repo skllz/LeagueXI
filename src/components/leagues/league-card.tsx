@@ -21,9 +21,10 @@ interface LeagueCardProps {
 
 export function LeagueCard({ league, showJoin, isOwner }: LeagueCardProps) {
   return (
-    <Link href={`/leagues/${league.slug}`}>
+    <Link href={`/leagues/${league.slug}`} className="block">
       <div className={cn(
-        "rounded-xl border border-border bg-card p-4 hover:border-[var(--green)]/40 transition-colors space-y-3",
+        "rounded-2xl border border-border bg-card p-4 space-y-3 transition-all",
+        "hover:border-[var(--green)]/40 hover:bg-secondary/20 active:scale-[0.99]",
         league.is_archived && "opacity-60"
       )}>
         <div className="flex items-start justify-between gap-2">
@@ -31,10 +32,7 @@ export function LeagueCard({ league, showJoin, isOwner }: LeagueCardProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold truncate">{league.name}</span>
               {isOwner && (
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{ background: "#1a1a1a", border: "1px solid #333", color: "#888" }}
-                >
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 bg-secondary border border-border text-muted-foreground">
                   Owner
                 </span>
               )}

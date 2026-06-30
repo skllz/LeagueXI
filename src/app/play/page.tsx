@@ -7,6 +7,8 @@ import { FixturePredictionCard, type PredictionCardTeam } from "@/components/pla
 import { RoundLeaderboardList, type LeaderboardRow } from "@/components/play/round-leaderboard-list"
 import { leaguePositionSummary } from "@/lib/leaguexi/league-position"
 import { GLOBAL_LEAGUE_ID } from "@/lib/constants"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { CalendarOff, ArrowRight, Trophy } from "lucide-react"
 
 export const revalidate = 30
@@ -135,20 +137,20 @@ export default async function PlayPage() {
 
   return (
     <Shell>
-      {/* Active round card */}
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
+      {/* Active round card — the hero of the screen */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold">Round {round.round_number}</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h1 className="text-2xl font-bold tracking-tight">Round {round.round_number}</h1>
+            <p className="text-xs text-muted-foreground mt-1">
               Closes in <Countdown targetIso={round.end_datetime} />
             </p>
           </div>
-          <RoundProgressRing predicted={progress.predicted} total={progress.total} />
+          <RoundProgressRing predicted={progress.predicted} total={progress.total} size={76} />
         </div>
         <Link
           href={`/rounds/${round.id}`}
-          className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[var(--green)] text-white font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
+          className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-[var(--green)] text-white font-semibold py-3.5 text-sm hover:opacity-90 active:scale-[0.99] transition-all"
         >
           Continue Predicting <ArrowRight className="w-4 h-4" />
         </Link>
@@ -190,16 +192,16 @@ export default async function PlayPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">My League Position</h2>
           <Link
             href={leagueHref}
-            className="block rounded-2xl border border-border bg-card p-4 hover:bg-secondary/20 transition-colors"
+            className="block rounded-2xl border border-border bg-card p-5 hover:bg-secondary/20 active:scale-[0.99] transition-all"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Trophy className="w-4 h-4 text-[var(--green)] flex-shrink-0" />
                 <span className="font-medium truncate">{leagueLabel}</span>
               </div>
               <span className="font-bold tabular-nums">#{leaguePos.rank}<span className="text-muted-foreground font-normal"> of {leaguePos.total}</span></span>
             </div>
-            <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span><span className="font-semibold text-foreground tabular-nums">{leaguePos.points}</span> pts</span>
               <span>{leaguePos.behindLeader === 0 ? "Leading 🏆" : `${leaguePos.behindLeader} behind leader`}</span>
               {leaguePos.aheadOfNext !== null && <span>{leaguePos.aheadOfNext} ahead of next</span>}
@@ -221,7 +223,12 @@ export default async function PlayPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">{children}</div>
+  return (
+    <PageContainer>
+      <PageHeader />
+      {children}
+    </PageContainer>
+  )
 }
 
 function GapState({ message }: { message: string }) {

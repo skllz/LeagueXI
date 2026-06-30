@@ -3,6 +3,8 @@ import { LeagueCard } from "@/components/leagues/league-card"
 import { JoinByCodeForm } from "@/components/leagues/join-by-code-form"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 
@@ -94,21 +96,20 @@ export default async function LeaguesPage() {
   }))
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Leagues</h1>
-        {user && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <JoinByCodeForm />
-            <Button asChild size="sm" className="bg-[var(--green)] hover:bg-[var(--green)]/90 text-white">
-              <Link href="/leagues/create">
-                <Plus className="w-4 h-4 mr-1" /> Create
-              </Link>
-            </Button>
-          </div>
-        )}
-      </div>
+    <PageContainer>
+      <PageHeader title="Leagues" />
+
+      {/* Primary actions — given their own row for clearer hierarchy */}
+      {user && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <JoinByCodeForm />
+          <Button asChild size="sm" className="bg-[var(--green)] hover:bg-[var(--green)]/90 text-white">
+            <Link href="/leagues/create">
+              <Plus className="w-4 h-4 mr-1" /> Create
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Logged-out: subtle CTA + public leagues */}
       {!user ? (
@@ -137,9 +138,9 @@ export default async function LeaguesPage() {
       ) : (
         /* Logged-in: tabbed view */
         <Tabs defaultValue="mine">
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="mine">My Leagues ({myLeagues.length})</TabsTrigger>
-            <TabsTrigger value="public-leagues">Public Leagues</TabsTrigger>
+          <TabsList className="w-full">
+            <TabsTrigger value="mine" className="flex-1">My Leagues ({myLeagues.length})</TabsTrigger>
+            <TabsTrigger value="public-leagues" className="flex-1">Public Leagues</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-4 space-y-2">
@@ -168,6 +169,6 @@ export default async function LeaguesPage() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+    </PageContainer>
   )
 }
