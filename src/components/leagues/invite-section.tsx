@@ -43,7 +43,7 @@ export function InviteSection({ inviteCode, leagueSlug, leagueName }: InviteSect
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-      <h3 className="text-sm font-semibold">Invite players</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Invite players</h3>
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">

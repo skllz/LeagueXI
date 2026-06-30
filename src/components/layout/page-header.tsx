@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Consistent Play-First screen header.
@@ -23,14 +22,20 @@ export function PageHeader({
   aside?: React.ReactNode
   className?: string
 }) {
+  // App-bar brand sits just above the page title. The brand↔title gap lives on
+  // the brand bar itself (mb), so the desktop-hidden brand leaves no phantom
+  // space above the title. Tighter with no subtitle, a touch more with one.
+  const brandGap = subtitle != null ? "mb-3" : "mb-2"
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn(className)}>
       <Link
         href="/play"
-        className="md:hidden flex items-center gap-2 text-lg font-bold tracking-tight"
+        className={cn(
+          "md:hidden block text-lg font-semibold tracking-tight text-foreground",
+          title != null && brandGap
+        )}
       >
-        <Trophy className="w-5 h-5 text-[var(--green)]" />
-        <span>LeagueXI</span>
+        LeagueXI
       </Link>
 
       {title != null && (

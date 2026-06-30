@@ -138,7 +138,7 @@ export default async function PlayPage() {
   return (
     <Shell>
       {/* Active round card — the hero of the screen */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card px-6 py-7 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Round {round.round_number}</h1>

@@ -248,10 +248,10 @@ export default async function LeaguePage({
 
         {/* Your rank */}
         {isMember && currentUserRank > 0 && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 px-3 py-1 text-sm">
-            <Trophy className="w-3.5 h-3.5 text-[var(--green)]" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 px-3.5 py-1.5 text-sm">
+            <Trophy className="w-4 h-4 text-[var(--green)]" />
             <span className="text-muted-foreground">Your rank</span>
-            <span className="font-bold text-[var(--green)]">#{currentUserRank}</span>
+            <span className="text-base font-bold text-[var(--green)]">#{currentUserRank}</span>
           </div>
         )}
 

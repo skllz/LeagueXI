@@ -23,7 +23,7 @@ export function LeagueCard({ league, showJoin, isOwner }: LeagueCardProps) {
   return (
     <Link href={`/leagues/${league.slug}`} className="block">
       <div className={cn(
-        "rounded-2xl border border-border bg-card p-4 space-y-3 transition-all",
+        "rounded-2xl border border-border bg-card p-5 space-y-3 transition-all",
         "hover:border-[var(--green)]/40 hover:bg-secondary/20 active:scale-[0.99]",
         league.is_archived && "opacity-60"
       )}>

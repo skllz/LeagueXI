@@ -35,7 +35,7 @@ export default async function ProfilePage() {
       <PageHeader />
 
       {/* Profile header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-3">
         <Avatar className="w-16 h-16">
           <AvatarImage src={profile.avatar_url ?? undefined} />
           <AvatarFallback className="bg-[var(--green-dim)] text-white text-xl">
