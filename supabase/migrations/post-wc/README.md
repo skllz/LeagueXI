@@ -43,6 +43,11 @@ store approval (see the spec §27A Cutover Sequencing).
 15. `0015_leaderboard_writer.sql` — recalculate_leaderboards + read RPCs (Phase 6B).
 16. `0016_locking_reminder.sql` — fixtures.locking_reminder_sent_at (Phase 8).
 
+**Contract-freeze fixes (staging-validated):**
+17. `0017_predictions_delete_policy.sql` — predictions own-delete RLS policy.
+18. `0018_leaderboard_top50_plus_caller.sql` — leaderboard Top-N + caller row
+    (supersedes `0015`'s read RPCs; adds `p_limit`/`p_caller_id`/`is_caller`).
+
 Run each DDL file inside its own transaction (every file is wrapped in
 `begin; … commit;`). Verification files (`0003`, `0012`) are read-only.
 
@@ -61,7 +66,7 @@ backfill World Cup `leaderboard_entries`) are **deferred to Phase 2B** by
 decision, because step 18 conflicts with spec §3 ("do not create a world_cup
 context in this phase"). Phase 2 creates **no** world_cup context, performs **no**
 backfill, and synthesizes **no** WC rounds. The WC→`round_id` backfill model is a
-Phase 2B decision. These will be added as `0013_*` once approved.
+Phase 2B decision. These will be added as `0019_*` once approved.
 
 ### Enum caveat
 

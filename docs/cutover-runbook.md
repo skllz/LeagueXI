@@ -13,8 +13,9 @@
 ## 0. Current state (as of this runbook)
 - Branch `post-wc`: build-order phases 1–10 + Phase 11 (post-WC UX) complete. `main`
   unchanged (`ef40370`); not pushed; no migration executed; live DB still WC schema.
-- Migrations written (NOT executed): `0001`–`0016` (see §4). Phase 2B (`0017+`,
-  world_cup context + WC backfill) is **not written yet** — decision pending.
+- Migrations written (NOT executed): `0001`–`0018` (see §4) — incl.
+  `0017_predictions_delete_policy.sql` and `0018_leaderboard_top50_plus_caller.sql`.
+  Phase 2B (`0019+`, world_cup context + WC backfill) is **not written yet** — decision pending.
 - Production deploys from `main`; crons activate from `vercel.json` on the
   production deployment only.
 
@@ -80,14 +81,16 @@ files (`0003`, `0012`) are read-only.
 13. `0013_sync_locks.sql` → 14. `0014_leaderboard_entries_unique.sql` (idempotency
     gate) → 15. `0015_leaderboard_writer.sql` (writer + read RPCs) →
     16. `0016_locking_reminder.sql` (fixtures.locking_reminder_sent_at).
-17. **Phase 2B** `0017_*` (world_cup context + WC backfill) — if in scope (§9).
+17. `0017_predictions_delete_policy.sql` (predictions own-delete RLS policy).
+18. `0018_leaderboard_top50_plus_caller.sql` (supersedes 0015's read RPCs — Top-N + caller row).
+19. **Phase 2B** `0019_*` (world_cup context + WC backfill) — if in scope (§9).
 
 Seeds already inside migrations: season 2026-27 (`0004`), standard_leaguexi context
 (`0005`), 15 tracked clubs (`0008`). Provider ID mappings are **not** seeded by a
 migration — run `discoverProviderIds()` (§6).
 
 ## 5. Staging validation (pre-cutover, on a migrated staging DB)
-- [ ] Apply `0001`–`0016` to a staging Supabase project.
+- [ ] Apply `0001`–`0018` to a staging Supabase project.
 - [ ] Run `0003` + `0012` read-only checks; resolve any straggler hits.
 - [ ] `discoverProviderIds()` → verify all 15 clubs mapped; resolve ambiguous.
 - [ ] Run a manual fixture-discovery (admin trigger / `GET` with `CRON_SECRET`):
@@ -123,8 +126,8 @@ own copy from the same migrated schema.)
    project's **Vercel Edge Config** (instant, no redeploy). Non-admin traffic →
    `/maintenance`; admins keep full access; `/auth`, `/api` (proxy + crons),
    `/_next` stay reachable. (Built pre-cutover — see §14.)
-5. Execute migrations `0001`–`0016` (§4) in order; watch the `ADD VALUE` caveat.
-   (+ `0017` Phase 2B if in scope.)
+5. Execute migrations `0001`–`0018` (§4) in order; watch the `ADD VALUE` caveat.
+   (+ `0019` Phase 2B if in scope.)
 6. Run `0003` + `0012` verification queries; confirm green.
 7. Run `discoverProviderIds()` on production (§6).
 8. Regenerate + commit `database.ts` (§7) if not already in the deploy artifact.
@@ -138,7 +141,7 @@ own copy from the same migrated schema.)
 
 ## 9. Phase 2B placement (world_cup history) — DECIDED: DEFERRED post-cutover
 **Decision (2026-06-25): Phase 2B is deferred to AFTER cutover.** The All-Time
-leaderboard launches WITHOUT World Cup data and is backfilled later via `0017_*`
+leaderboard launches WITHOUT World Cup data and is backfilled later via `0019_*`
 (create historical `world_cup` context + backfill `leaderboard_entries`). Safe
 because All-Time is computed at query time — backfilling later just makes WC appear,
 no rework. The WC→`round_id` model decision is made when Phase 2B is built. Do NOT

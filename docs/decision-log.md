@@ -275,3 +275,11 @@ Decision: Reclassify P-4 (email confirmation). It does NOT block Native Backend 
 Reason: Email confirmation affects authentication flow, not backend contract shape; it therefore cannot gate contract freeze. Native may build against the documented authentication assumption and reconcile before finalizing the auth experience.
 Impact: native-backend-contract.md §3 P-4 reclassified and removed from the §5 freeze blockers; remains an outstanding authentication-flow decision. Root-cause investigation still open (UNKNOWN).
 Status: Approved
+
+---
+
+Date: 2026-07-01
+Decision: Native Backend Contract declared FROZEN. P-1 (leaderboard Top-N + is_caller) implemented in 0018_leaderboard_top50_plus_caller.sql; P-3 completed (duplicate archived to supabase/archive/fix-critical-c1-c2-c3.sql); P-2 resolved (kickoff_at label kept; the 0002:224 "Phase 6" comment intentionally retained, superseded by this contract and the log). Staging small-board + large-board validation passed; the fixture was torn down and the canonical baseline restored. Database types regenerated from staging and committed (492e7af). Live implementation verified via pg_proc catalog introspection against §2C — parameters, defaults, return columns, return ordering, and SQL types all MATCH for get_round_leaderboard, get_season_leaderboard, get_all_time_leaderboard, and get_league_predictions.
+Reason: All contract-shape decisions are resolved and the resolving implementation has landed and been verified against the migrated staging schema; the native-consumed backend interface is now stable and safe to build against.
+Impact: native-backend-contract.md Status DRAFT → FROZEN (+ verification stamp; §1/§2C/§3/§5/§6 and Appendices A.1/A.3 reconciled; metadata commit pointer refreshed to 492e7af); docs/cutover-runbook.md + supabase/migrations/post-wc/README.md migration numbering current through 0018 with Phase 2B at 0019+; docs/final-pre-cutover-roadmap.md Current State updated. Post-freeze, backend changes default to backward-compatible; a breaking change requires re-issuing the contract and a new native build. P-4 (auth flow), P-5, and P-6 remain deferred and do not affect the frozen shape.
+Status: Approved

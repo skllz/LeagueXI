@@ -20,7 +20,7 @@ This roadmap exists only to define sequencing, dependencies, and project milesto
 
 The post-WC web application is feature complete and has completed visual QA and polish.
 
-The Native Backend Contract has been fully enumerated and documented but remains in **DRAFT** pending resolution of the remaining contract-shape decisions (P-1, P-2, and P-3).
+The Native Backend Contract is **FROZEN** — P-1, P-2, and P-3 are completed: the leaderboard Top-N/caller contract is **implemented** (`0018`), **staging-validated**, and **verified against live staging**. (P-4 remains an open authentication-flow decision that does not affect the frozen contract shape.)
 
 This roadmap governs the remaining work required to move from the current state to production cutover.
 

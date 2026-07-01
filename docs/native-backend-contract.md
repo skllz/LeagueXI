@@ -2,13 +2,13 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **DRAFT** |
+| **Status** | **FROZEN** |
 | **Repository branch** | `post-wc` |
-| **Current repository commit** | `b891dd2` — `style: tighten Play-First mobile polish` |
-| **Migration range reflected** | post-WC `0001`–`0017` |
+| **Current repository commit** | `492e7af` — `chore: regenerate database types after leaderboard RPC update` |
+| **Migration range reflected** | post-WC `0001`–`0018` |
 | **Source of truth** | The repository. This document carries forward a completed in-session investigation; it does not supersede the repo. |
 
-> **What DRAFT means here:** the backend contract is **FREEZABLE but not yet FROZEN** — the document itself is complete, but unresolved **Pending Contract Decisions** (§3) remain. DRAFT denotes those open decisions, **not** that this document is unfinished. It becomes a frozen contract only when §3 is empty and any resulting changes have landed.
+> **What FROZEN means here:** all contract-shape decisions (§3) are resolved and the resolving implementation has **landed and been verified against live staging** (see the Verification stamp in §5). FROZEN denotes a stable, native-consumable contract — subsequent backend changes should default to backward-compatible; a breaking change requires re-issuing the contract and a new native build. *(This document was DRAFT while P-1/P-2/P-3 were open — see §5 and the decision log for that history.)*
 
 **Source tags used below:** `[Repo]` web repository · `[Docs]` repo docs · `[Cfg-UNAVAILABLE]` Supabase/Vercel dashboard, not in repo · `[Cfg-VERIFIED]` dashboard value verified directly (dashboard-verified, **not** repository-derived) · `[Unknown]` not verifiable from repository evidence.
 
@@ -19,7 +19,7 @@
 This document defines the **backend contract** that a **new, post-WC native application** will consume. It exists so a future native build session can implement against the post-WC backend **without re-deriving the contract from the repository**.
 
 - The **current WC-era native application is intentionally OUT OF SCOPE.** Its compatibility, minimum supported version, and cutover sequencing are **not** covered here (parked items, §6).
-- The contract is defined by the **committed post-WC migrations (`0001`–`0017`)** plus already-live WC-era SQL carried forward unchanged. Migrations are written-not-executed for production but **already applied to the staging Supabase project** (ref `vraigmawyoxfkhlkfeua`) per `docs/handover.md:19-20`, so the migrated schema is inspectable there.
+- The contract is defined by the **committed post-WC migrations (`0001`–`0018`)** plus already-live WC-era SQL carried forward unchanged. Migrations are written-not-executed for production but **already applied to the staging Supabase project** (ref `vraigmawyoxfkhlkfeua`) per `docs/handover.md:19-20`, so the migrated schema is inspectable there.
 
 > **Architecture note (critical for native):** Native consumes the backend via **direct Supabase calls (tables + RPCs) under RLS**, *not* via Next.js server actions. The web server actions (`src/app/actions/*.ts`) are **web-only**; native must replicate their *logic* with direct table writes + RPCs, subject to the same RLS. The contract here is tables / RPCs / RLS / payloads — not server actions.
 
@@ -59,11 +59,11 @@ This document defines the **backend contract** that a **new, post-WC native appl
 
 | RPC | Signature → Returns | Source | Status |
 |---|---|---|---|
-| `get_round_leaderboard` | `(p_round_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points, correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:211-236` + P-1 (decision-log 2026-06-30) | **RESOLVED (P-1)** — impl pending |
-| `get_season_leaderboard` | `(p_season_id uuid, p_prediction_context_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → same 8 cols (incl. `is_caller`) | `0015:239-267` + P-1 | **RESOLVED (P-1)** — impl pending |
-| `get_all_time_leaderboard` | `(p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points (bigint), correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:273-319` + P-1 | **RESOLVED (P-1)** — impl pending |
+| `get_round_leaderboard` | `(p_round_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points, correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:211-236`, superseded by `0018` (P-1) | **FINAL (P-1)** — implemented in `0018`, applied to staging + validated |
+| `get_season_leaderboard` | `(p_season_id uuid, p_prediction_context_id uuid, p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → same 8 cols (incl. `is_caller`) | `0015:239-267`, superseded by `0018` (P-1) | **FINAL (P-1)** — implemented in `0018`, applied to staging + validated |
+| `get_all_time_leaderboard` | `(p_league_id uuid=null, p_limit int=50, p_caller_id uuid=null)` → `user_id, username, avatar_url, points (bigint), correct_scores, correct_outcomes, rank, is_caller (boolean, default false)` | `0015:273-319`, superseded by `0018` (P-1) | **FINAL (P-1)** — implemented in `0018`, applied to staging + validated |
 | `get_league_for_page` | `(p_slug text)` → `id, name, slug, description, visibility, prize_description, is_archived, creator_user_id` *(competition_id dropped; owner_id→creator_user_id)* | `0002:307-329` | FINAL |
-| `get_league_by_invite_code` | `(p_invite_code text)` → `id, slug, is_archived` *(never leaks invite_code)* | `supabase/fix-pending-security.sql:52-67` (**canonical**) | **FINAL (P-3 DECIDED)** — canonical pinned; duplicate quarantine is repo cleanup |
+| `get_league_by_invite_code` | `(p_invite_code text)` → `id, slug, is_archived` *(never leaks invite_code)* | `supabase/fix-pending-security.sql:52-67` (**canonical**) | **FINAL (P-3 DECIDED)** — canonical pinned; duplicate **archived** (`supabase/archive/`) |
 | `transfer_league_ownership` | `(p_league_id, p_caller_id, p_new_owner_id uuid)` → `text` (`'ok'` / error string) | `0002:337-379` | FINAL |
 | `register_device_token` | `(p_token text, p_platform text=null)` → void | `supabase/push-notifications.sql:42-69` | FINAL |
 
@@ -74,13 +74,13 @@ This document defines the **backend contract** that a **new, post-WC native appl
 > - The appended caller row preserves the **complete** return schema and always reports the caller's **true global rank** (e.g. `rank = 4237`) — it is **never** renumbered or converted into a display rank.
 > - All non-caller rows have `is_caller = false`.
 >
-> The **contract decision is finalized**; **implementation is pending** (a migration superseding the `0015` RPC bodies + staging validation + regenerated database types).
+> The **contract decision is finalized** and the **implementation has landed** — migration **`0018_leaderboard_top50_plus_caller.sql`** (supersedes the `0015` read RPCs), **applied to staging, large-board validated, and verified against the live catalog** (§5).
 
 ### 2D. RPCs — Legacy compatibility surface (exist post-migration; new native should prefer 2C)
 
 | RPC | Note | Source | Status |
 |---|---|---|---|
-| `get_league_predictions` | `(p_league_id, p_caller_id, p_competition_id uuid=null)` → 17 cols incl. **`fixture_id`** (was `match_id`) and **`kickoff_at`** (value sourced from `kickoff_datetime_utc`). Requires `auth.uid() = p_caller_id` | `0002:228-296` | **FINAL (P-2 RESOLVED)** — `kickoff_at` label is final; the Phase-6 rename to `kickoff_datetime_utc` is **rejected**; the stale `0002:224` comment is superseded (comment removal is repo cleanup, not a contract change) |
+| `get_league_predictions` | `(p_league_id, p_caller_id, p_competition_id uuid=null)` → 18 cols incl. **`fixture_id`** (was `match_id`) and **`kickoff_at`** (value sourced from `kickoff_datetime_utc`). Requires `auth.uid() = p_caller_id` | `0002:228-296` | **FINAL (P-2 RESOLVED)** — `kickoff_at` label is final; the Phase-6 rename to `kickoff_datetime_utc` is **rejected**; the stale `0002:224` comment is superseded (comment removal is repo cleanup, not a contract change) |
 | `get_leaderboard` / `get_league_leaderboard` / `get_user_rank` | WC-era global/league boards; signatures unchanged, internals re-pointed to `fixtures`/`finished`; retain `p_competition_id` | `0002:81-206` | FINAL (legacy; superseded by 2C for post-WC) |
 | `recalculate_match_predictions` | **Scoring RPC — legacy name kept** (`p_match_id`), internals use `fixtures`/`fixture_id`/`finished`. Server/admin path, **not native** | `0002:34-70` | FINAL (legacy name, post-WC internals) |
 | `recalculate_leaderboards` | Post-WC leaderboard **writer** (service/internal, not native) | `0015:23-199` | FINAL |
@@ -124,26 +124,26 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 
 ---
 
-## 3. Pending Contract Decisions
+## 3. Contract Decisions (record)
 
-*(Carried forward exactly. Not resolved here.)*
+*(All contract-**shape** decisions (P-1/P-2/P-3) are **resolved** — see §5; this section is retained as the historical decision record. P-4 is a reclassified auth-flow decision; P-5/P-6 are non-blocking deferred items outside the frozen contract shape.)*
 
-| ID | Affected surface | Reason pending | Owner | Freeze impact |
+| ID | Affected surface | Notes | Owner | Freeze impact |
 |---|---|---|---|---|
-| **P-1** — ✓ RESOLVED | `get_round/season/all_time_leaderboard` IN/OUT (Top-50 view) | **RESOLVED:** add `p_limit int default 50`, `p_caller_id uuid default null`, and OUT `is_caller boolean` (default false); caller appended only when outside Top N; **true global rank preserved**; no duplicate caller row (§2C; decision-log 2026-06-30) | Human Product / Architecture Decision | **Does NOT block freeze** — decision made; **implementation pending** (migration + staging + type regen) |
+| **P-1** — ✓ RESOLVED | `get_round/season/all_time_leaderboard` IN/OUT (Top-50 view) | **RESOLVED:** add `p_limit int default 50`, `p_caller_id uuid default null`, and OUT `is_caller boolean` (default false); caller appended only when outside Top N; **true global rank preserved**; no duplicate caller row (§2C; decision-log 2026-06-30) | Human Product / Architecture Decision | **Does NOT block freeze** — decision made and **implemented** (`0018`, staging-validated, live-verified) |
 | **P-2** — ✓ RESOLVED | `get_league_predictions` OUT label `kickoff_at` | **RESOLVED:** keep `kickoff_at` (label FINAL); the Phase-6 rename to `kickoff_datetime_utc` is **rejected**; the stale `0002:224` migration comment is superseded (comment removal is repo cleanup) | Human Architecture Decision | **Does NOT block freeze** |
-| **P-3** — ✓ DECIDED | `get_league_by_invite_code`, `get_user_league_ids`, `is_league_open_for_joining` | **DECISION:** canonical version = `supabase/fix-pending-security.sql` (helpers also `fix-rls-recursion.sql`); canonical surface pinned (§2C/§2D). The known incorrect duplicate is scheduled for **quarantine/removal in the implementation workstream** | Implementation Work (repo cleanup) | **DOES NOT BLOCK** — not a contract-shape blocker; quarantine completed as pre-freeze repo cleanup |
+| **P-3** — ✓ DECIDED | `get_league_by_invite_code`, `get_user_league_ids`, `is_league_open_for_joining` | **DECISION:** canonical version = `supabase/fix-pending-security.sql` (helpers also `fix-rls-recursion.sql`); canonical surface pinned (§2C/§2D). The known incorrect duplicate is **archived** to `supabase/archive/fix-critical-c1-c2-c3.sql` | Implementation Work (repo cleanup) | **DOES NOT BLOCK** — not a contract-shape blocker; duplicate archived as pre-freeze repo cleanup |
 | **P-4** — RECLASSIFIED | Auth signup contract (email-confirmation ON/OFF; enabled provider list) | Current production state is **dashboard-verified: confirmation DISABLED** (`[Cfg-VERIFIED]`, immediate sign-in after signup); whether to keep it off or re-enable remains an open **authentication-flow** decision; Nigerian confirmation-link root cause remains `[Unknown]` (§4) | Human Product Decision + External Configuration | **Does NOT block contract freeze** — blocks finalization of the **native authentication experience** only |
-| **P-5** | Legacy RPCs' `p_competition_id` parameter removal | `0002:24` defers removal to "Phase 6"; not removed | Human Architecture Decision | DOES NOT BLOCK (new native uses 2C RPCs without it) |
-| **P-6** | Phase 2B `world_cup` context + WC `leaderboard_entries` backfill | Deferred post-cutover; WC→`round_id` model undecided | Human Architecture Decision | DOES NOT BLOCK (adds *data*, not *shape*; All-Time is computed at query time) |
+| **P-5** — DEFERRED | Legacy RPCs' `p_competition_id` parameter removal | `0002:24` defers removal to "Phase 6"; not removed | Human Architecture Decision | DOES NOT BLOCK (new native uses 2C RPCs without it) |
+| **P-6** — DEFERRED | Phase 2B `world_cup` context + WC `leaderboard_entries` backfill | Deferred post-cutover; WC→`round_id` model undecided | Human Architecture Decision | DOES NOT BLOCK (adds *data*, not *shape*; All-Time is computed at query time) |
 
 ### Contract stability classification (carried forward)
 
 - **STABLE:** all §2A tables, §2B enums, `get_league_for_page`, `transfer_league_ownership`, `register_device_token`, `recalculate_match_predictions`, legacy `get_leaderboard/get_league_leaderboard/get_user_rank`, `get_league_predictions` (incl. final `kickoff_at` — P-2), helper RPCs (canonical pinned — P-3), §2E push payloads, §2G routes, `GLOBAL_LEAGUE_ID`.
-- **RESOLVED — implementation pending:** `get_round/season/all_time_leaderboard` Top-N + `is_caller` shape (P-1) — contract FINAL; migration + staging + type regen outstanding.
+- **RESOLVED — implemented:** `get_round/season/all_time_leaderboard` Top-N + `is_caller` shape (P-1) — landed in `0018`, staging-validated, live-verified.
 - **EXPECTED TO CHANGE:** legacy `p_competition_id` params (P-5, non-blocking).
 - **BLOCKED BY DECISION:** none that block freeze (P-6 WC→`round_id` model is a post-cutover decision; adds data, not native-consumed shape).
-- **BLOCKED BY IMPLEMENTATION (execution, not architecture):** P-1 implementation; generated-types regeneration; P-3 duplicate quarantine; stale P-2 migration-comment removal.
+- **BLOCKED BY IMPLEMENTATION:** none — P-1 implemented (`0018`); database types regenerated; P-3 duplicate archived; P-2 `0002:224` comment intentionally retained (superseded by docs).
 - **UNKNOWN:** see §4.
 
 ---
@@ -167,26 +167,27 @@ Transport: Expo Push API (`https://exp.host/--/api/v2/push/send`), message `{to,
 
 ## 5. Backend Freeze Assessment
 
-**FREEZABLE: YES.** Every native-consumed surface is enumerated (§2) and every contract-shape decision is now resolved (§3). This document is the freezable contract target.
+**FROZEN: YES.** Every native-consumed surface is enumerated (§2), every contract-shape decision (§3) is resolved, and the resolving implementation has **landed and been verified against live staging**. The contract freeze is complete.
 
-**Open contract-shape decisions: NONE.** P-1, P-2, P-3, and P-4 are all resolved / reclassified (this means the contract decisions are settled — **not** that implementation work is complete):
-- **P-1** (leaderboard Top-N + `is_caller`) — RESOLVED (contract shape finalized).
+**Contract-shape decisions — all resolved / reclassified:**
+- **P-1** (leaderboard Top-N + `is_caller`) — RESOLVED and **implemented** (`0018`).
 - **P-2** (`get_league_predictions.kickoff_at`) — RESOLVED (label kept; rename rejected).
-- **P-3** (helper RPC canonicalization) — DECIDED (canonical pinned; **not** a contract-shape blocker).
-- **P-4** (email confirmation) — RECLASSIFIED: does **not** block contract freeze; affects the native **authentication experience** only.
+- **P-3** (helper RPC canonicalization) — DECIDED; canonical pinned and the duplicate **archived** (`supabase/archive/`).
+- **P-4** (email confirmation) — RECLASSIFIED: does **not** block contract freeze; affects the native **authentication experience** only (still an open auth-flow decision — §3/§4).
 
-**FROZEN: NO.** The contract *shape* is finalized, but implementation and verification are still pending — so the document remains **DRAFT** until the workstream below completes.
+**Contract Freeze Workstream — COMPLETE:**
+- ✅ **P-1 implementation** — `0018_leaderboard_top50_plus_caller.sql` (adds `p_limit`/`p_caller_id`/`is_caller`; supersedes the `0015` read RPCs).
+- ✅ **Staging validation** — small-board + large-board (Top-50 truncation, caller-append, true-rank preservation, bigint) passed; fixture torn down and the canonical baseline restored.
+- ✅ **Generated database types** — regenerated from staging and committed.
+- ✅ **Live catalog verification** — `pg_proc` introspection matched §2C field-by-field (params, defaults, return columns, order, SQL types).
+- ✅ **P-3 duplicate archived** (not deleted); canonical helper intact.
+- ↔ **P-2** — the historical `0002:224` "Phase 6" comment is **intentionally left in place**, superseded by this contract and the decision log (per the P-2 decision); no migration edit is required.
 
-#### Remaining before FROZEN (Contract Freeze Workstream)
+P-5 (legacy `p_competition_id` removal) and P-6 (Phase 2B WC backfill) remain deferred but do **not** affect the frozen post-WC native-consumed shapes. This document is now a **frozen contract**: subsequent backend changes should default to backward-compatible, and a breaking change requires re-issuing the contract plus a new native build.
 
-- **P-1 implementation** (add `p_limit` / `p_caller_id` / `is_caller` to the three leaderboard RPCs);
-- **staging validation**;
-- **generated database types regeneration** (from the migrated schema);
-- **verify implementation matches the documented contract**;
-- **P-3 duplicate quarantine** (remove the known incorrect invite-code helper duplicate);
-- **stale P-2 migration comment removal** (`0002:224`).
+### Verification stamp
 
-P-5 and P-6 remain pending but do **not** block freeze (they do not change post-WC native-consumed shapes). Because the workstream above is still outstanding, this remains a **living contract target, not a guarantee** — hence document **Status: DRAFT**. FROZEN happens only after that workstream lands and the contract is verified.
+**2026-07-01 — Contract FROZEN.** Verified against the **live staging implementation** (project `vraigmawyoxfkhlkfeua`) via **`pg_proc` catalog introspection** (not migration files, not generated types), compared field-by-field against **§2C**. Confirmed **`get_round_leaderboard`**, **`get_season_leaderboard`**, **`get_all_time_leaderboard`**, and **`get_league_predictions`** — **parameters, defaults, SQL types, return columns, and return ordering all MATCH**. All-Time `points`/`correct_scores`/`correct_outcomes` confirmed **bigint**; `get_league_predictions` still exposes **`kickoff_at`** (P-2).
 
 ---
 
@@ -201,8 +202,8 @@ Concrete inputs for a future native Claude Code session to begin implementation 
   - **Required** — Supabase **proxy URL** + **anon key** (per native `eas.json`).
   - **Optional** — none identified.
   - **Forbidden** — `SUPABASE_SERVICE_ROLE_KEY`, `API_FOOTBALL_KEY`, `CRON_SECRET` (server-only).
-- **Type generation source:** `npx supabase gen types typescript` against the **migrated DB** (staging `vraigmawyoxfkhlkfeua` already has `0001`–`0017`) — **do not hand-edit** (`docs/cutover-runbook.md §7`). Regenerate again post-cutover from production.
-- **Contract artifacts to hand the native session:** this document; the migration set `0001`–`0017` (esp. `0001` renames, `0002` RPC/RLS, `0015` leaderboards, `0017` predictions delete); `src/lib/push.ts` (payloads); `supabase/fix-pending-security.sql` (invite/admin-trigger helpers); `docs/cutover-runbook.md §3` (native contract checklist).
+- **Type generation source:** `npx supabase gen types typescript` against the **migrated DB** (staging `vraigmawyoxfkhlkfeua` already has `0001`–`0018`) — **do not hand-edit** (`docs/cutover-runbook.md §7`). Regenerate again post-cutover from production.
+- **Contract artifacts to hand the native session:** this document; the migration set `0001`–`0018` (esp. `0001` renames, `0002` RPC/RLS, `0015`+`0018` leaderboards, `0017` predictions delete); `src/lib/push.ts` (payloads); `supabase/fix-pending-security.sql` (invite/admin-trigger helpers); `docs/cutover-runbook.md §3` (native contract checklist).
 
 **Parked (out of scope — recorded, not investigated):** current-live-native compatibility, cutover sequencing, minimum supported app version.
 
@@ -212,6 +213,6 @@ Concrete inputs for a future native Claude Code session to begin implementation 
 
 Where the repository and other docs disagree, **trust the repository.** These do not change the contract conclusions above; they flag docs to correct.
 
-1. **Migration numbering.** `docs/cutover-runbook.md:16,83` and `supabase/migrations/post-wc/README.md:57-64` still say "migrations `0001`–`0016`, Phase 2B = `0017`", but the repo has **`0017_predictions_delete_policy.sql`**. The repo is correct; Phase 2B must renumber to `0018+`. (`docs/handover.md` is already correct.)
+1. **Migration numbering — RESOLVED.** `docs/cutover-runbook.md` (§0/§4/§5/§8/§9) and `supabase/migrations/post-wc/README.md` are now current through **`0018`**: the execution list runs `…0016 → 0017_predictions_delete_policy.sql → 0018_leaderboard_top50_plus_caller.sql`, and **Phase 2B begins at `0019+`** everywhere. (`docs/handover.md` was already correct.)
 2. **`get_league_predictions` carve-out.** `0002:220-224` keeps `kickoff_at` and notes a "Phase 6" cleanup that the Phase 6 migrations (`0014`/`0015`) do not perform — the label is currently `kickoff_at` (→ P-2).
-3. **`get_league_by_invite_code` duplication.** `supabase/fix-critical-c1-c2-c3.sql:8-13` warns of a wrong-named variant that must not be run; `supabase/fix-pending-security.sql:52` is canonical (→ P-3).
+3. **`get_league_by_invite_code` duplication — RESOLVED.** The wrong-named variant was archived to `supabase/archive/fix-critical-c1-c2-c3.sql`; `supabase/fix-pending-security.sql:52` is canonical (→ P-3).
