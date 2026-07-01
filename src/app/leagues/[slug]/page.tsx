@@ -160,7 +160,7 @@ export default async function LeaguePage({
     ? await supabase.rpc("get_league_predictions", {
         p_league_id: league.id,
         p_caller_id: user.id,
-        p_competition_id: competitionId,
+        p_competition_id: competitionId ?? undefined,
       })
     : { data: [] }
 

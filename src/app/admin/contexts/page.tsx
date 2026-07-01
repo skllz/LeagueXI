@@ -48,7 +48,7 @@ export default async function AdminContextsPage() {
                 name={c.name}
                 type={c.type}
                 season={c.season_id ? seasonById.get(c.season_id) ?? null : null}
-                status={c.status}
+                status={c.status as "upcoming" | "active" | "completed" | "archived"}
               />
             ))}
           </tbody>
