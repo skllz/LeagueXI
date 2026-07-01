@@ -202,7 +202,7 @@ export default async function PlayPage() {
                 <Trophy className="w-4 h-4 text-[var(--green)] flex-shrink-0" />
                 <span className="font-medium truncate">{leagueLabel}</span>
               </div>
-              <span className="font-bold tabular-nums">#{leaguePos.rank}<span className="text-muted-foreground font-normal"> of {leaguePos.total}</span></span>
+              <span className="font-bold tabular-nums">#{leaguePos.rank}</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span><span className="font-semibold text-foreground tabular-nums">{leaguePos.points}</span> pts</span>
