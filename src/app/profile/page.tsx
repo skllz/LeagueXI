@@ -10,6 +10,7 @@ import { signOut } from "@/app/actions/auth"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 import { Trophy, Star, Check, Target, CalendarRange, Medal } from "lucide-react"
+import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog"
 
 export const revalidate = 0
 
@@ -85,6 +86,16 @@ export default async function ProfilePage() {
           Sign out
         </button>
       </form>
+
+      {/* Danger zone — not shown for admin accounts */}
+      {!profile.is_admin && (
+        <div className="space-y-2 pt-2 border-t border-border/50">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Danger zone
+          </h2>
+          <DeleteAccountDialog />
+        </div>
+      )}
     </PageContainer>
   )
 }
