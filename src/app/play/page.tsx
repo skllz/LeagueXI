@@ -106,12 +106,13 @@ export default async function PlayPage() {
   )
 
   // ── Round Leaderboard (Top 3 + you) preview ─────────────────────────────────
-  const { data: roundRowsRaw } = await supabase.rpc("get_round_leaderboard", { p_round_id: round.id })
-  const roundRows = (roundRowsRaw ?? []) as LeaderboardRow[]
-  const top3 = roundRows.slice(0, 3)
-  const meInTop3 = user ? top3.some((r) => r.user_id === user.id) : true
-  const meRow = user ? roundRows.find((r) => r.user_id === user.id) : undefined
-  const previewRows = !meInTop3 && meRow ? [...top3, meRow] : top3
+  // p_limit:3 returns Top-3; p_caller_id appends the caller's row if outside Top-3.
+  const { data: roundRowsRaw } = await supabase.rpc("get_round_leaderboard", {
+    p_round_id: round.id,
+    p_limit: 3,
+    p_caller_id: user?.id ?? undefined,
+  })
+  const previewRows = (roundRowsRaw ?? []) as LeaderboardRow[]
 
   // ── My League Position (first non-global league, else Global) ───────────────
   let leaguePos: ReturnType<typeof leaguePositionSummary> = null
@@ -130,7 +131,9 @@ export default async function PlayPage() {
     const { data: seasonRows } = await supabase.rpc("get_season_leaderboard", {
       p_season_id: ctx.season_id,
       p_prediction_context_id: ctx.id,
-      p_league_id: nonGlobal ? nonGlobal.league_id : undefined, // undefined → global rows
+      p_league_id: nonGlobal ? nonGlobal.league_id : undefined,
+      p_limit: 50,
+      p_caller_id: user.id,
     })
     leaguePos = leaguePositionSummary((seasonRows ?? []) as LeaderboardRow[], user.id)
   }

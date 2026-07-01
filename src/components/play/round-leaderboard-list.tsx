@@ -1,3 +1,4 @@
+import React from "react"
 import { cn } from "@/lib/utils"
 
 export interface LeaderboardRow {
@@ -8,6 +9,7 @@ export interface LeaderboardRow {
   correct_scores: number
   correct_outcomes: number
   rank: number
+  is_caller?: boolean
 }
 
 export function RoundLeaderboardList({
@@ -35,22 +37,32 @@ export function RoundLeaderboardList({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
-            const you = r.user_id === currentUserId
+          {rows.map((r, i) => {
+            const you = r.is_caller === true || r.user_id === currentUserId
+            // Appended caller row: is_caller but rank is not consecutive with the row above
+            const isAppended = r.is_caller === true && i > 0 && rows[i - 1].rank < r.rank - 1
             return (
-              <tr
-                key={r.user_id}
-                className={cn(
-                  "border-t border-border transition-colors",
-                  you ? "bg-[var(--green)]/10" : "hover:bg-secondary/20"
+              <React.Fragment key={r.user_id}>
+                {isAppended && (
+                  <tr aria-hidden>
+                    <td colSpan={3} className="px-4 py-0">
+                      <div className="border-t border-dashed border-border/60" />
+                    </td>
+                  </tr>
                 )}
-              >
-                <td className="px-4 py-3 tabular-nums text-muted-foreground">{r.rank}</td>
-                <td className="px-4 py-3 font-medium">
-                  {r.username ? `@${r.username}` : "—"}{you && <span className="ml-1.5 text-xs font-medium text-[var(--green)]">you</span>}
-                </td>
-                <td className="px-4 py-3 text-right font-bold tabular-nums">{r.points}</td>
-              </tr>
+                <tr
+                  className={cn(
+                    "border-t border-border transition-colors",
+                    you ? "bg-[var(--green)]/10" : "hover:bg-secondary/20"
+                  )}
+                >
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{r.rank}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {r.username ? `@${r.username}` : "—"}{you && <span className="ml-1.5 text-xs font-medium text-[var(--green)]">you</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold tabular-nums">{r.points}</td>
+                </tr>
+              </React.Fragment>
             )
           })}
         </tbody>

@@ -212,7 +212,11 @@ async function LeaderboardTab({
   currentUserId: string | null
 }) {
   const supabase = await createClient()
-  const { data } = await supabase.rpc("get_round_leaderboard", { p_round_id: roundId })
+  const { data } = await supabase.rpc("get_round_leaderboard", {
+    p_round_id: roundId,
+    p_limit: 50,
+    p_caller_id: currentUserId ?? undefined,
+  })
   const rows = (data ?? []) as LeaderboardRow[]
   return <RoundLeaderboardList rows={rows} currentUserId={currentUserId} />
 }

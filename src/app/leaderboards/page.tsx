@@ -51,7 +51,11 @@ export default async function LeaderboardsPage({
       <RoundSelector rounds={sel} currentRoundId={roundId} basePath="/leaderboards" />
     )
     if (roundId) {
-      const { data } = await supabase.rpc("get_round_leaderboard", { p_round_id: roundId })
+      const { data } = await supabase.rpc("get_round_leaderboard", {
+        p_round_id: roundId,
+        p_limit: 50,
+        p_caller_id: user?.id ?? undefined,
+      })
       rows = (data ?? []) as LeaderboardRow[]
     }
   } else if (tab === "season") {
@@ -59,11 +63,16 @@ export default async function LeaderboardsPage({
       const { data } = await supabase.rpc("get_season_leaderboard", {
         p_season_id: ctx.season_id,
         p_prediction_context_id: ctx.id,
+        p_limit: 50,
+        p_caller_id: user?.id ?? undefined,
       })
       rows = (data ?? []) as LeaderboardRow[]
     }
   } else {
-    const { data } = await supabase.rpc("get_all_time_leaderboard", {})
+    const { data } = await supabase.rpc("get_all_time_leaderboard", {
+      p_limit: 50,
+      p_caller_id: user?.id ?? undefined,
+    })
     rows = (data ?? []) as unknown as LeaderboardRow[]
   }
 

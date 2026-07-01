@@ -111,16 +111,22 @@ async function ProfileStats({ userId }: { userId: string }) {
     .eq("status", "active")
     .maybeSingle()
 
-  // All-Time totals + rank (cross-context, query-time).
-  const { data: allTimeData } = await supabase.rpc("get_all_time_leaderboard", {})
+  // All-Time totals + rank. p_caller_id ensures this user's row is always returned
+  // even if they fall outside Top-50.
+  const { data: allTimeData } = await supabase.rpc("get_all_time_leaderboard", {
+    p_limit: 50,
+    p_caller_id: userId,
+  })
   const allTime = findMyRow(allTimeData as unknown as RankRow[], userId)
 
-  // Season rank.
+  // Season rank — same caller-id guarantee.
   let season: RankRow | null = null
   if (ctx?.season_id) {
     const { data: seasonData } = await supabase.rpc("get_season_leaderboard", {
       p_season_id: ctx.season_id,
       p_prediction_context_id: ctx.id,
+      p_limit: 50,
+      p_caller_id: userId,
     })
     season = findMyRow(seasonData as unknown as RankRow[], userId)
   }

@@ -136,6 +136,8 @@ export default async function LeaguePage({
       p_season_id: ctx.season_id,
       p_prediction_context_id: ctx.id,
       p_league_id: league.id,
+      p_limit: 50,
+      p_caller_id: user?.id ?? undefined,
     })
     seasonRows = (data ?? []) as LeaderboardRow[]
   }
@@ -145,10 +147,16 @@ export default async function LeaguePage({
     const { data } = await supabase.rpc("get_round_leaderboard", {
       p_round_id: selectedRoundId,
       p_league_id: league.id,
+      p_limit: 50,
+      p_caller_id: user?.id ?? undefined,
     })
     tabRows = (data ?? []) as LeaderboardRow[]
   } else if (activeTab === "all-time") {
-    const { data } = await supabase.rpc("get_all_time_leaderboard", { p_league_id: league.id })
+    const { data } = await supabase.rpc("get_all_time_leaderboard", {
+      p_league_id: league.id,
+      p_limit: 50,
+      p_caller_id: user?.id ?? undefined,
+    })
     tabRows = (data ?? []) as unknown as LeaderboardRow[]
   }
 
