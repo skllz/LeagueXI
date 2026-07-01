@@ -1,8 +1,55 @@
 # LeagueXI — Living Handover Document (FULL DETAIL)
 
-> **LAST UPDATED:** 2026-06-22 (session continued)
+> **LAST UPDATED:** 2026-07-01 (post-WC native backend contract FROZEN — commit `742848e`)
 > **STATUS:** Living document — kept current as work proceeds. Insurance against context loss, not a one-time export. **Nothing is intentionally summarized away; this is the complete record.**
 > **BUILT ON:** the Session-1 handover *"LeagueXI — Complete Session Handover Document, Generated June 10 2026"* (Sections 0–18), pasted by the owner at the start of Session 2. This doc **incorporates and supersedes** it; on conflict, this doc wins (carries Session-2 verifications).
+
+---
+
+## 🚨 BRANCH SAFETY — READ BEFORE TOUCHING ANYTHING
+
+**`main` = production. `post-wc` = build branch. They must never be mixed.**
+
+| Branch | Purpose | Vercel deploys? | DB migrations run? |
+|---|---|---|---|
+| `main` | Live site at leaguexi.io | ✅ Yes — auto on push | ✅ Already executed |
+| `post-wc` | Post-WC rebuild (Phases 1–11+) | ❌ No | ❌ Not until cutover day |
+
+**Rules:**
+1. **Production issues** → open a session, confirm `git branch --show-current` says `main`, work only there.
+2. **Post-WC build** → work only on `post-wc`. Never push post-wc to GitHub main.
+3. **Reading production code** in a session where the repo is on `post-wc` → use `git show main:<path>` not the Read tool directly (Read tool always reads the working tree, not main).
+4. **Never merge post-wc → main** without executing the full cutover runbook.
+
+If you are a new Claude session and this repo is on `post-wc`, switch to main before doing any production diagnosis: `git checkout main`.
+
+---
+
+## 🧊 POST-WC REBUILD — BACKEND CONTRACT FROZEN (as of 2026-07-01)
+
+> This block covers the **post-WC rebuild** on branch `post-wc`. The WC-era sections below remain the record for the **live `main` production app** and are unchanged. Nothing here is executed against production or the live DB — migrations are written-not-executed for prod and applied to staging only.
+
+**Native Backend Contract: FROZEN.** Freeze commit **`742848e`** (`docs: freeze native backend contract after live-staging verification`). The contract (`docs/native-backend-contract.md`) is now a stable, native-consumable interface: post-freeze backend changes default to backward-compatible, and a breaking change requires re-issuing the contract + a new native build.
+
+**How the freeze was earned (all complete):**
+- **Migration `0018_leaderboard_top50_plus_caller.sql`** — written and **applied to staging** (`vraigmawyoxfkhlkfeua`). Adds `p_limit`/`p_caller_id`/`is_caller` to the three leaderboard read RPCs (supersedes the `0015` bodies). Not run against production (cutover-day only).
+- **Small-board validation** — passed on staging.
+- **Large-board validation** — passed on staging (Top-50 truncation, caller-append outside Top-N, true global rank preserved, All-Time `bigint`).
+- **Canonical staging seed restored** — the large-board fixture was torn down (label-based teardown) and the canonical baseline restored after validation.
+- **Live `pg_proc` catalog verification** — introspected the running staging catalog and matched contract §2C field-by-field (params, defaults, return columns, ordering, SQL types) for `get_round_leaderboard`, `get_season_leaderboard`, `get_all_time_leaderboard`, and `get_league_predictions`.
+- **Generated database types** — regenerated from staging and committed (`492e7af`).
+- **P-3 archive complete** — the superseded, wrong-named helper was archived to **`supabase/archive/fix-critical-c1-c2-c3.sql`** (moved, not deleted); the canonical helper (`supabase/fix-pending-security.sql`) stays pinned. Any remaining references to the old `supabase/fix-critical-c1-c2-c3.sql` path elsewhere in this document are **intentionally documentation-only** (historical record — not action items).
+
+**Migration numbering:** post-WC migrations are `0001`–`0018` (written, not executed for prod; applied to staging). Phase 2B begins at `0019+`. See `docs/cutover-runbook.md` and `supabase/migrations/post-wc/README.md`.
+
+**Known intentional debt:** the World Cup (`main`) app's ESLint/lint debt remains **intentionally deferred** — it neither touches nor blocks the post-WC native backend contract.
+
+**Backend state:** stable and frozen. No backend contract-shape work is outstanding (P-4 auth-flow, P-5, P-6 are deferred/non-blocking and do not affect the frozen shape).
+
+**Next workstream (not started):**
+1. **Native application implementation** — separate Expo repo consuming this frozen contract.
+2. **Provider integration validation** — football-data.org provider ID mappings / sync pipeline.
+3. **Cutover preparation** — execute the staging→production cutover runbook when ready.
 
 ---
 
@@ -29,6 +76,9 @@
 ---
 
 ## CHANGELOG
+
+### 2026-07-01 — Post-WC native backend contract FROZEN
+`GIT: 742848e` (docs-only). The post-WC native backend contract is now **FROZEN** after live-staging verification — see the **POST-WC REBUILD — BACKEND CONTRACT FROZEN** section above for the full state. Migration `0018_leaderboard_top50_plus_caller.sql` implemented + applied to staging; small- + large-board validation passed; canonical staging seed restored after teardown; live `pg_proc` catalog verification matched the contract; database types regenerated + committed (`492e7af`); P-3 helper archived to `supabase/archive/fix-critical-c1-c2-c3.sql`. No application code, SQL migration, or production change.
 
 ### 2026-06-22 (l) — Matches page: 12-hour rule for day-group auto-expand
 `GIT: 044c861`. Fixes MD3 stealing focus from MD2 the moment predictions unlock (48 h before first MD3 kickoff).

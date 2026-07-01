@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# supabase (local CLI artifacts — reproducible via `supabase link`)
+supabase/.temp/
+supabase/.branches/
