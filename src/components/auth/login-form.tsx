@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { sendPasswordReset } from "@/app/actions/auth"
+import { sendPasswordReset, signUpWithEmail } from "@/app/actions/auth"
 import { safeInternalPath } from "@/lib/utils"
 import { DEFAULT_HOME } from "@/lib/home-route"
 import { Button } from "@/components/ui/button"
@@ -62,33 +62,15 @@ export function LoginForm() {
     setMessage(null)
 
     if (isSignUp) {
-      const { data: signUpData, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: callbackUrl },
-      })
-      if (error) {
-        setMessage({ text: error.message, ok: false })
-      } else if (signUpData.session) {
-        // Confirmation is OFF — user is immediately signed in.
-        // Proceed exactly like a successful password sign-in.
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username, is_admin")
-          .eq("id", signUpData.session.user.id)
-          .maybeSingle()
-
-        if (!profile?.username) {
-          window.location.href = next
-            ? `/onboarding?next=${encodeURIComponent(next)}`
-            : "/onboarding"
-        } else if (next) {
-          window.location.href = next
-        } else if (profile.is_admin) {
-          window.location.href = "/admin"
-        } else {
-          window.location.href = DEFAULT_HOME
-        }
+      // Signup runs server-side via an implicit-flow client so the confirmation
+      // email carries a real token_hash, not token_hash=pkce_… (see signUpWithEmail).
+      const result = await signUpWithEmail(email, password, next)
+      if ("error" in result) {
+        setMessage({ text: result.error, ok: false })
+      } else if (result.status === "signed_in") {
+        // Confirmation is OFF — the server action set the browser session cookies.
+        // Full navigation so the app loads authenticated at the right landing page.
+        window.location.href = result.redirect
       } else {
         // Confirmation is ON — user must verify email before signing in.
         setMessage({ text: "Check your email to confirm your account.", ok: true })
