@@ -62,15 +62,36 @@ export function LoginForm() {
     setMessage(null)
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: callbackUrl },
       })
       if (error) {
         setMessage({ text: error.message, ok: false })
+      } else if (signUpData.session) {
+        // Confirmation is OFF — user is immediately signed in.
+        // Proceed exactly like a successful password sign-in.
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username, is_admin")
+          .eq("id", signUpData.session.user.id)
+          .maybeSingle()
+
+        if (!profile?.username) {
+          window.location.href = next
+            ? `/onboarding?next=${encodeURIComponent(next)}`
+            : "/onboarding"
+        } else if (next) {
+          window.location.href = next
+        } else if (profile.is_admin) {
+          window.location.href = "/admin"
+        } else {
+          window.location.href = DEFAULT_HOME
+        }
       } else {
-        setMessage({ text: "Account created! You can now sign in.", ok: true })
+        // Confirmation is ON — user must verify email before signing in.
+        setMessage({ text: "Check your email to confirm your account.", ok: true })
         setIsSignUp(false)
         setPassword("")
       }
